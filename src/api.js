@@ -1,16 +1,36 @@
 import { supabase } from './supabase.js';
+import { isRememberedLoginValid, rememberLoginUntil } from './model.js';
+
+const REMEMBER_LOGIN_KEY = 'rtw_remember_until_v1';
 
 function fail(error) { if (error) throw error; }
 
+function rememberLogin() {
+  localStorage.setItem(REMEMBER_LOGIN_KEY, String(rememberLoginUntil()));
+}
+
+function clearRememberedLogin() {
+  localStorage.removeItem(REMEMBER_LOGIN_KEY);
+}
+
 export async function currentUser() {
+  const rememberedUntil = localStorage.getItem(REMEMBER_LOGIN_KEY);
+  if (!isRememberedLoginValid(rememberedUntil)) {
+    clearRememberedLogin();
+    await supabase.auth.signOut().catch(() => {});
+    return null;
+  }
+
   const { data, error } = await supabase.auth.getUser();
   if (error && error.name !== 'AuthSessionMissingError') throw error;
+  if (!data?.user) clearRememberedLogin();
   return data?.user ?? null;
 }
 
 export async function signIn(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   fail(error);
+  rememberLogin();
   return data.user;
 }
 
@@ -20,7 +40,25 @@ export async function signUp(email, password) {
   return data;
 }
 
+export async function setupOwner(email, password, setupCode) {
+  const { data, error } = await supabase.functions.invoke('rtw-owner-setup', {
+    body: { email, password, setupCode }
+  });
+  if (error) {
+    let message = error.message || '초기 계정 설정에 실패했습니다.';
+    try {
+      const payload = await error.context?.json?.();
+      if (payload?.message) message = payload.message;
+    } catch {
+      // Keep the original function error message.
+    }
+    throw new Error(message);
+  }
+  return data;
+}
+
 export async function signOut() {
+  clearRememberedLogin();
   const { error } = await supabase.auth.signOut();
   fail(error);
 }
