@@ -24,6 +24,11 @@ const aiFn=readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts',imp
 assert.equal(apiSource.includes('signInWithPassword'),false); assert.equal(apiSource.includes('auth.signUp'),false); assert.match(authEnhanceSource,/Google로 로그인/);
 assert.match(importFn,/Authorization/); assert.match(importFn,/owner_user_id/); assert.match(apiSource,/export async function importResourceUrl/); assert.match(importUiSource,/URL로 가져오기/);
 assert.match(aiFn,/OPENAI_API_KEY/); assert.match(aiFn,/store:\s*false/); assert.match(aiFn,/owner_user_id/); assert.match(apiSource,/export async function analyzeResource/); assert.match(aiUiSource,/GPT로 읽기/);
+assert.match(apiSource,/export async function updateResource/,'saved reading resources can be edited later');
+const mainSource=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
+assert.match(mainSource,/원문·정보 수정/,'resource detail exposes edit action');
+assert.match(mainSource,/id="resource-edit-form"/,'resource detail has edit form');
+assert.match(mainSource,/api\.updateResource\(id, form\)/,'resource edits are persisted');
 assert.match(entryFlowSource,/id="home-quick-add"/); assert.match(entryFlowSource,/\?new=1/); assert.match(entryFlowSource,/\+ 새 자료/); assert.match(importUiSource,/URLSearchParams/); assert.match(importUiSource,/requestSubmit/); assert.match(appEntrySource,/reading-entry-flow\.js/);
 
 // Shared visual rhythm and mobile layout contract.
