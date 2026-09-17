@@ -58,6 +58,7 @@ assert.deepEqual(
   { claims: ['A'], questions: ['Q'], connections: [], expansion: null }
 );
 
+const mainSource = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
 const importUiSource = readFileSync(new URL('../src/reading-import-ui.js', import.meta.url), 'utf8');
 const aiUiSource = readFileSync(new URL('../src/reading-ai-ui.js', import.meta.url), 'utf8');
@@ -104,5 +105,12 @@ assert.match(aiUiSource, /질문으로 저장/);
 assert.match(aiUiSource, /createNote/);
 assert.match(aiUiSource, /createQuestion/);
 assert.match(aiUiSource, /addRelation/);
+
+assert.match(mainSource, /id="home-quick-add"/, '홈에 URL 빠른 추가 입력이 있어야 한다');
+assert.match(mainSource, /function newResourceView\(/, '새 자료는 별도 화면이어야 한다');
+assert.match(mainSource, /\/read\/new\//, '읽기 목록에서 새 자료 화면으로 진입해야 한다');
+assert.match(mainSource, /\+ 새 자료/, '읽기 목록에 새 자료 버튼이 있어야 한다');
+assert.match(importUiSource, /URLSearchParams/, '홈에서 넘긴 URL을 새 자료 화면에서 받아야 한다');
+assert.match(importUiSource, /requestSubmit/, '홈에서 넘긴 URL은 새 자료 화면에서 자동 가져오기를 실행해야 한다');
 
 console.log('model tests passed');
