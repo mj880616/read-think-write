@@ -35,6 +35,29 @@ assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }, { provider:
 assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'google' }]), false);
 assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }]), false);
 
+const readingTools = await import('../src/reading-tools.js');
+assert.deepEqual(
+  readingTools.normalizeImportResponse({
+    status: 'full',
+    resource: { title: 'A', body_md: 'Body' },
+    warnings: []
+  }),
+  {
+    status: 'full',
+    resource: {
+      title: 'A', original_title: '', author: '', source_name: '',
+      published_on: '', original_url: '', body_md: 'Body'
+    },
+    warnings: []
+  }
+);
+assert.match(readingTools.importStatusMessage('metadata_only'), /본문/);
+assert.throws(() => readingTools.normalizeAiReadResult({ claims: 'bad' }));
+assert.deepEqual(
+  readingTools.normalizeAiReadResult({ claims: ['A'], questions: ['Q'], connections: [], expansion: null }),
+  { claims: ['A'], questions: ['Q'], connections: [], expansion: null }
+);
+
 const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
 const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
 
