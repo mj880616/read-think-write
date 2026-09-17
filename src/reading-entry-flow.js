@@ -19,7 +19,7 @@ function addHomeQuickAdd() {
   const hero = document.querySelector('main.page > .hero');
   if (!hero) return;
   const following = hero.nextElementSibling;
-  if (following) following.classList.add('page-section');
+  if (following) following.classList.add('page-section', 'home-stack');
 
   const section = document.createElement('section');
   section.className = 'card home-quick-add-card';
