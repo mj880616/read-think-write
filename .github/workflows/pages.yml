@@ -20,6 +20,8 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - name: Check JavaScript syntax
+        run: for file in src/*.js; do node --check "$file"; done
   deploy:
     if: github.event_name == 'push'
     environment:
