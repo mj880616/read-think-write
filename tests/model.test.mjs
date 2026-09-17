@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as model from '../src/model.js';
 
 const grouped = model.groupResourcesByMonth([
@@ -15,12 +16,6 @@ assert.equal(model.safeHttpUrl('https://example.com/a'), 'https://example.com/a'
 assert.equal(model.safeHttpUrl('javascript:alert(1)'), '');
 assert.equal(model.safeHttpUrl('not a url'), '');
 
-assert.equal(typeof model.validateSignupInput, 'function', '회원가입 입력 검증 함수가 있어야 한다');
-assert.deepEqual(model.validateSignupInput('reader@example.com', '12345678', '12345678'), { ok: true, message: '' });
-assert.equal(model.validateSignupInput('', '12345678', '12345678').ok, false);
-assert.equal(model.validateSignupInput('reader@example.com', '1234', '1234').ok, false);
-assert.equal(model.validateSignupInput('reader@example.com', '12345678', '87654321').ok, false);
-
 const now = Date.UTC(2026, 8, 17, 12, 0, 0);
 const thirtyDaysLater = now + 30 * 24 * 60 * 60 * 1000;
 assert.equal(typeof model.rememberLoginUntil, 'function', '30일 로그인 유지 만료시각 계산 함수가 있어야 한다');
@@ -30,13 +25,23 @@ assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater), thirtyDaysLat
 assert.equal(model.isRememberedLoginValid('', now), false);
 assert.equal(model.isRememberedLoginValid('not-a-number', now), false);
 
-assert.equal(typeof model.ownerSetupAccountAction, 'function', '기존 계정 초기설정 분기 함수가 있어야 한다');
-assert.equal(model.ownerSetupAccountAction(false), 'create');
-assert.equal(model.ownerSetupAccountAction(true), 'reset-existing');
-
 assert.equal(typeof model.isOAuthCallback, 'function', 'OAuth 콜백 감지 함수가 있어야 한다');
 assert.equal(model.isOAuthCallback('?code=abc123'), true);
 assert.equal(model.isOAuthCallback('?foo=bar'), false);
 assert.equal(model.isOAuthCallback(''), false);
+
+assert.deepEqual(model.enabledAuthProviders(), ['google'], '로그인 방식은 Google 하나만 노출해야 한다');
+assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }, { provider: 'google' }]), true);
+assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'google' }]), false);
+assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }]), false);
+
+const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
+const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
+
+assert.equal(apiSource.includes('signInWithPassword'), false, '이메일/비밀번호 로그인 API를 제거해야 한다');
+assert.equal(apiSource.includes('auth.signUp'), false, '이메일 회원가입 API를 제거해야 한다');
+assert.equal(authEnhanceSource.includes('Google로 로그인'), true, 'Google 로그인 버튼은 유지해야 한다');
+assert.equal(authEnhanceSource.includes('form?.remove()'), true, '기존 이메일/비밀번호 폼은 렌더 직후 제거해야 한다');
+assert.equal(authEnhanceSource.includes('또는 이메일로 로그인'), false, '이메일 로그인 안내 문구를 제거해야 한다');
 
 console.log('model tests passed');

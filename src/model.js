@@ -32,23 +32,6 @@ export function safeHttpUrl(value) {
   }
 }
 
-export function validateSignupInput(email, password, passwordConfirm) {
-  const cleanEmail = String(email ?? '').trim();
-  const cleanPassword = String(password ?? '');
-  const cleanConfirm = String(passwordConfirm ?? '');
-
-  if (!cleanEmail || !cleanEmail.includes('@')) {
-    return { ok: false, message: '이메일 주소를 확인해 주세요.' };
-  }
-  if (cleanPassword.length < 8) {
-    return { ok: false, message: '비밀번호는 8자 이상으로 입력해 주세요.' };
-  }
-  if (cleanPassword !== cleanConfirm) {
-    return { ok: false, message: '비밀번호 확인이 일치하지 않습니다.' };
-  }
-  return { ok: true, message: '' };
-}
-
 export function rememberLoginUntil(now = Date.now()) {
   return now + 30 * 24 * 60 * 60 * 1000;
 }
@@ -58,14 +41,19 @@ export function isRememberedLoginValid(value, now = Date.now()) {
   return Number.isFinite(until) && until > now;
 }
 
-export function ownerSetupAccountAction(existingUserFound) {
-  return existingUserFound ? 'reset-existing' : 'create';
-}
-
 export function isOAuthCallback(search = '') {
   try {
     return Boolean(new URLSearchParams(search).get('code'));
   } catch {
     return false;
   }
+}
+
+export function enabledAuthProviders() {
+  return ['google'];
+}
+
+export function shouldUnlinkEmailIdentity(identities = []) {
+  const providers = new Set(identities.map((identity) => identity?.provider).filter(Boolean));
+  return providers.has('google') && providers.has('email') && identities.length >= 2;
 }

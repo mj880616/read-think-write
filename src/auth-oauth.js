@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 import { APP_BASE } from './config.js';
-import { isOAuthCallback, rememberLoginUntil } from './model.js';
+import { isOAuthCallback, rememberLoginUntil, shouldUnlinkEmailIdentity } from './model.js';
 
 const REMEMBER_LOGIN_KEY = 'rtw_remember_until_v1';
 
@@ -60,4 +60,18 @@ export async function claimOwner(setupCode) {
   }
   rememberLogin();
   return data;
+}
+
+export async function keepGoogleIdentityOnly() {
+  const { data, error } = await supabase.auth.getUserIdentities();
+  if (error) throw error;
+  const identities = data?.identities ?? [];
+  if (!shouldUnlinkEmailIdentity(identities)) return false;
+
+  const emailIdentity = identities.find((identity) => identity.provider === 'email');
+  if (!emailIdentity) return false;
+
+  const { error: unlinkError } = await supabase.auth.unlinkIdentity(emailIdentity);
+  if (unlinkError) throw unlinkError;
+  return true;
 }
