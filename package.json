@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "test": "node tests/model.test.mjs && node tests/url-policy.test.mjs && node tests/body-extraction.test.mjs"
+    "test": "node tests/model.test.mjs && node tests/url-policy.test.mjs && node tests/body-extraction.test.mjs && node tests/date-extraction.test.mjs"
   }
 }
