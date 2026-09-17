@@ -34,4 +34,9 @@ assert.equal(typeof model.ownerSetupAccountAction, 'function', '기존 계정 �
 assert.equal(model.ownerSetupAccountAction(false), 'create');
 assert.equal(model.ownerSetupAccountAction(true), 'reset-existing');
 
+assert.equal(typeof model.isOAuthCallback, 'function', 'OAuth 콜백 감지 함수가 있어야 한다');
+assert.equal(model.isOAuthCallback('?code=abc123'), true);
+assert.equal(model.isOAuthCallback('?foo=bar'), false);
+assert.equal(model.isOAuthCallback(''), false);
+
 console.log('model tests passed');
