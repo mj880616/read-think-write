@@ -35,14 +35,13 @@ assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }, { provider:
 assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'google' }]), false);
 assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }]), false);
 
-const mainSource = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
 const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
 
-assert.equal(mainSource.includes('type="password"'), false, '로그인 화면에 비밀번호 입력칸이 없어야 한다');
-assert.equal(mainSource.includes('name="email"'), false, '로그인 화면에 이메일 입력칸이 없어야 한다');
 assert.equal(apiSource.includes('signInWithPassword'), false, '이메일/비밀번호 로그인 API를 제거해야 한다');
 assert.equal(apiSource.includes('auth.signUp'), false, '이메일 회원가입 API를 제거해야 한다');
 assert.equal(authEnhanceSource.includes('Google로 로그인'), true, 'Google 로그인 버튼은 유지해야 한다');
+assert.equal(authEnhanceSource.includes('form?.remove()'), true, '기존 이메일/비밀번호 폼은 렌더 직후 제거해야 한다');
+assert.equal(authEnhanceSource.includes('또는 이메일로 로그인'), false, '이메일 로그인 안내 문구를 제거해야 한다');
 
 console.log('model tests passed');
