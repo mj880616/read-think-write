@@ -97,6 +97,22 @@ export async function createResource(input, userId) {
   return data;
 }
 
+export async function updateResource(id, input) {
+  const row = {
+    title: input.title.trim(),
+    original_title: input.original_title?.trim() || null,
+    author: input.author?.trim() || null,
+    source_name: input.source_name?.trim() || null,
+    published_on: input.published_on || null,
+    original_url: input.original_url?.trim() || null,
+    body_md: input.body_md || '',
+    updated_at: new Date().toISOString()
+  };
+  const { data, error } = await supabase.from('rtw_resources').update(row).eq('id', id).select().single();
+  fail(error);
+  return data;
+}
+
 export async function listNotes(resourceId = undefined) {
   let query = supabase.from('rtw_notes').select('*').order('updated_at', { ascending: false });
   query = resourceId === null
