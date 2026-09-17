@@ -61,7 +61,9 @@ assert.deepEqual(
 const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
 const importUiSource = readFileSync(new URL('../src/reading-import-ui.js', import.meta.url), 'utf8');
 const aiUiSource = readFileSync(new URL('../src/reading-ai-ui.js', import.meta.url), 'utf8');
+const entryFlowSource = readFileSync(new URL('../src/reading-entry-flow.js', import.meta.url), 'utf8');
 const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
+const appEntrySource = readFileSync(new URL('../src/app-entry.js', import.meta.url), 'utf8');
 const importFn = readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts', import.meta.url), 'utf8');
 const aiFn = readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts', import.meta.url), 'utf8');
 
@@ -104,5 +106,13 @@ assert.match(aiUiSource, /질문으로 저장/);
 assert.match(aiUiSource, /createNote/);
 assert.match(aiUiSource, /createQuestion/);
 assert.match(aiUiSource, /addRelation/);
+
+assert.match(entryFlowSource, /id="home-quick-add"/, '홈에 URL 빠른 추가 입력이 있어야 한다');
+assert.match(entryFlowSource, /\?new=1/, '새 자료는 읽기 목록과 분리된 전용 상태여야 한다');
+assert.match(entryFlowSource, /\+ 새 자료/, '읽기 목록에 새 자료 버튼이 있어야 한다');
+assert.match(entryFlowSource, /새 자료/, '새 자료 상태는 별도 제목을 표시해야 한다');
+assert.match(importUiSource, /URLSearchParams/, '홈에서 넘긴 URL을 새 자료 화면에서 받아야 한다');
+assert.match(importUiSource, /requestSubmit/, '홈에서 넘긴 URL은 새 자료 화면에서 자동 가져오기를 실행해야 한다');
+assert.match(appEntrySource, /reading-entry-flow\.js/, '새 자료 화면 전환 모듈을 앱에서 불러와야 한다');
 
 console.log('model tests passed');
