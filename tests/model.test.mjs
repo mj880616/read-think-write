@@ -30,4 +30,8 @@ assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater), thirtyDaysLat
 assert.equal(model.isRememberedLoginValid('', now), false);
 assert.equal(model.isRememberedLoginValid('not-a-number', now), false);
 
+assert.equal(typeof model.ownerSetupAccountAction, 'function', '기존 계정 초기설정 분기 함수가 있어야 한다');
+assert.equal(model.ownerSetupAccountAction(false), 'create');
+assert.equal(model.ownerSetupAccountAction(true), 'reset-existing');
+
 console.log('model tests passed');
