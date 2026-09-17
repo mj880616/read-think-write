@@ -57,3 +57,15 @@ export function isRememberedLoginValid(value, now = Date.now()) {
   const until = Number(value);
   return Number.isFinite(until) && until > now;
 }
+
+export function ownerSetupAccountAction(existingUserFound) {
+  return existingUserFound ? 'reset-existing' : 'create';
+}
+
+export function isOAuthCallback(search = '') {
+  try {
+    return Boolean(new URLSearchParams(search).get('code'));
+  } catch {
+    return false;
+  }
+}

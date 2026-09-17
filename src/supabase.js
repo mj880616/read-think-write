@@ -30,6 +30,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     storageKey: SESSION_STORAGE_KEY,
-    storage: guardedStorage
+    storage: guardedStorage,
+    flowType: 'pkce',
+    detectSessionInUrl: false
   }
 });
