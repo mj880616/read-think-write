@@ -21,4 +21,13 @@ assert.equal(model.validateSignupInput('', '12345678', '12345678').ok, false);
 assert.equal(model.validateSignupInput('reader@example.com', '1234', '1234').ok, false);
 assert.equal(model.validateSignupInput('reader@example.com', '12345678', '87654321').ok, false);
 
+const now = Date.UTC(2026, 8, 17, 12, 0, 0);
+const thirtyDaysLater = now + 30 * 24 * 60 * 60 * 1000;
+assert.equal(typeof model.rememberLoginUntil, 'function', '30일 로그인 유지 만료시각 계산 함수가 있어야 한다');
+assert.equal(model.rememberLoginUntil(now), thirtyDaysLater);
+assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater), now + 1), true);
+assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater), thirtyDaysLater), false);
+assert.equal(model.isRememberedLoginValid('', now), false);
+assert.equal(model.isRememberedLoginValid('not-a-number', now), false);
+
 console.log('model tests passed');
