@@ -62,6 +62,7 @@ const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8'
 const importUiSource = readFileSync(new URL('../src/reading-import-ui.js', import.meta.url), 'utf8');
 const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
 const importFn = readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts', import.meta.url), 'utf8');
+const aiFn = readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts', import.meta.url), 'utf8');
 
 assert.equal(apiSource.includes('signInWithPassword'), false, '이메일/비밀번호 로그인 API를 제거해야 한다');
 assert.equal(apiSource.includes('auth.signUp'), false, '이메일 회원가입 API를 제거해야 한다');
@@ -81,5 +82,13 @@ assert.match(importUiSource, /URL로 가져오기/);
 assert.match(importUiSource, /resource-import-form/);
 assert.match(importUiSource, /normalizeImportResponse/);
 assert.match(importUiSource, /수동 입력은 그대로 사용할 수 있습니다/);
+
+assert.match(aiFn, /OPENAI_API_KEY/);
+assert.match(aiFn, /rtw_resources/);
+assert.match(aiFn, /owner_id/);
+assert.match(aiFn, /rtw_topics/);
+assert.match(aiFn, /rtw_questions/);
+assert.match(aiFn, /json_schema/);
+assert.match(aiFn, /store:\s*false/);
 
 console.log('model tests passed');
