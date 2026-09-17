@@ -31,3 +31,20 @@ export function safeHttpUrl(value) {
     return '';
   }
 }
+
+export function validateSignupInput(email, password, passwordConfirm) {
+  const cleanEmail = String(email ?? '').trim();
+  const cleanPassword = String(password ?? '');
+  const cleanConfirm = String(passwordConfirm ?? '');
+
+  if (!cleanEmail || !cleanEmail.includes('@')) {
+    return { ok: false, message: '이메일 주소를 확인해 주세요.' };
+  }
+  if (cleanPassword.length < 8) {
+    return { ok: false, message: '비밀번호는 8자 이상으로 입력해 주세요.' };
+  }
+  if (cleanPassword !== cleanConfirm) {
+    return { ok: false, message: '비밀번호 확인이 일치하지 않습니다.' };
+  }
+  return { ok: true, message: '' };
+}
