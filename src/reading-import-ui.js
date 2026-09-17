@@ -58,11 +58,29 @@ function createImporter(resourceForm) {
   return wrap;
 }
 
+function importPendingUrl(importer) {
+  const params = new URLSearchParams(location.search);
+  const pendingUrl = String(params.get('url') || '').trim();
+  if (!pendingUrl || importer.dataset.pendingUrlHandled === 'true') return;
+
+  importer.dataset.pendingUrlHandled = 'true';
+  const input = importer.querySelector('input[name="url"]');
+  const form = importer.querySelector('#resource-import-form');
+  if (!input || !form) return;
+
+  input.value = pendingUrl;
+  params.delete('url');
+  const query = params.toString();
+  history.replaceState({}, '', `${location.pathname}${query ? `?${query}` : ''}`);
+  queueMicrotask(() => form.requestSubmit());
+}
+
 export function enhanceReadingImport() {
   const resourceForm = document.querySelector('#resource-form');
   if (!resourceForm || document.querySelector('[data-reading-importer]')) return;
   const importer = createImporter(resourceForm);
   resourceForm.insertAdjacentElement('beforebegin', importer);
+  importPendingUrl(importer);
 }
 
 const observer = new MutationObserver(() => enhanceReadingImport());
