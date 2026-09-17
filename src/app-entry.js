@@ -8,3 +8,4 @@ try {
 
 await import('./main.js');
 await import('./auth-enhance.js');
+await import('./reading-import-ui.js');
