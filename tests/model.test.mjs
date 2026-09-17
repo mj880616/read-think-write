@@ -35,13 +35,74 @@ assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }, { provider:
 assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'google' }]), false);
 assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }]), false);
 
+const readingTools = await import('../src/reading-tools.js');
+assert.deepEqual(
+  readingTools.normalizeImportResponse({
+    status: 'full',
+    resource: { title: 'A', body_md: 'Body' },
+    warnings: []
+  }),
+  {
+    status: 'full',
+    resource: {
+      title: 'A', original_title: '', author: '', source_name: '',
+      published_on: '', original_url: '', body_md: 'Body'
+    },
+    warnings: []
+  }
+);
+assert.match(readingTools.importStatusMessage('metadata_only'), /본문/);
+assert.throws(() => readingTools.normalizeAiReadResult({ claims: 'bad' }));
+assert.deepEqual(
+  readingTools.normalizeAiReadResult({ claims: ['A'], questions: ['Q'], connections: [], expansion: null }),
+  { claims: ['A'], questions: ['Q'], connections: [], expansion: null }
+);
+
 const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
+const importUiSource = readFileSync(new URL('../src/reading-import-ui.js', import.meta.url), 'utf8');
+const aiUiSource = readFileSync(new URL('../src/reading-ai-ui.js', import.meta.url), 'utf8');
 const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
+const importFn = readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts', import.meta.url), 'utf8');
+const aiFn = readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts', import.meta.url), 'utf8');
 
 assert.equal(apiSource.includes('signInWithPassword'), false, '이메일/비밀번호 로그인 API를 제거해야 한다');
 assert.equal(apiSource.includes('auth.signUp'), false, '이메일 회원가입 API를 제거해야 한다');
 assert.equal(authEnhanceSource.includes('Google로 로그인'), true, 'Google 로그인 버튼은 유지해야 한다');
 assert.equal(authEnhanceSource.includes('form?.remove()'), true, '기존 이메일/비밀번호 폼은 렌더 직후 제거해야 한다');
 assert.equal(authEnhanceSource.includes('또는 이메일로 로그인'), false, '이메일 로그인 안내 문구를 제거해야 한다');
+
+assert.match(importFn, /Authorization/);
+assert.match(importFn, /resolveDns/);
+assert.match(importFn, /AbortSignal\.timeout|AbortController/);
+assert.match(importFn, /content-type/i);
+assert.match(importFn, /redirect:\s*['"]manual['"]/);
+assert.match(importFn, /MAX_BYTES/);
+assert.match(importFn, /rtw_setup_state/);
+assert.match(importFn, /owner_user_id/);
+
+assert.match(apiSource, /export async function importResourceUrl/);
+assert.match(importUiSource, /URL로 가져오기/);
+assert.match(importUiSource, /resource-import-form/);
+assert.match(importUiSource, /normalizeImportResponse/);
+assert.match(importUiSource, /수동 입력은 그대로 사용할 수 있습니다/);
+
+assert.match(aiFn, /OPENAI_API_KEY/);
+assert.match(aiFn, /rtw_resources/);
+assert.match(aiFn, /owner_id/);
+assert.match(aiFn, /rtw_topics/);
+assert.match(aiFn, /rtw_questions/);
+assert.match(aiFn, /json_schema/);
+assert.match(aiFn, /store:\s*false/);
+assert.match(aiFn, /rtw_setup_state/);
+assert.match(aiFn, /owner_user_id/);
+
+assert.match(apiSource, /export async function analyzeResource/);
+assert.match(aiUiSource, /GPT로 읽기/);
+assert.match(aiUiSource, /나의 생각 확장/);
+assert.match(aiUiSource, /메모로 저장/);
+assert.match(aiUiSource, /질문으로 저장/);
+assert.match(aiUiSource, /createNote/);
+assert.match(aiUiSource, /createQuestion/);
+assert.match(aiUiSource, /addRelation/);
 
 console.log('model tests passed');

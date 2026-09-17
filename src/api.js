@@ -5,6 +5,18 @@ const REMEMBER_LOGIN_KEY = 'rtw_remember_until_v1';
 
 function fail(error) { if (error) throw error; }
 
+async function failFunction(error) {
+  if (!error) return;
+  let message = error.message || '서버 요청에 실패했습니다.';
+  try {
+    const payload = await error.context?.clone?.().json?.();
+    if (payload?.error) message = payload.error;
+  } catch {
+    // Keep the SDK error message when the response has no JSON body.
+  }
+  throw new Error(message);
+}
+
 function clearRememberedLogin() {
   localStorage.removeItem(REMEMBER_LOGIN_KEY);
 }
@@ -42,6 +54,29 @@ export async function listResources() {
 export async function getResource(id) {
   const { data, error } = await supabase.from('rtw_resources').select('*').eq('id', id).single();
   fail(error);
+  return data;
+}
+
+export async function importResourceUrl(url) {
+  const clean = String(url ?? '').trim();
+  if (!clean) throw new Error('가져올 URL을 입력하세요.');
+  const { data, error } = await supabase.functions.invoke('rtw-url-import', {
+    body: { url: clean }
+  });
+  await failFunction(error);
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function analyzeResource(resourceId, mode = 'read') {
+  const cleanId = String(resourceId ?? '').trim();
+  if (!cleanId) throw new Error('읽을 자료를 선택하세요.');
+  const cleanMode = mode === 'expand' ? 'expand' : 'read';
+  const { data, error } = await supabase.functions.invoke('rtw-ai-read', {
+    body: { resource_id: cleanId, mode: cleanMode }
+  });
+  await failFunction(error);
+  if (data?.error) throw new Error(data.error);
   return data;
 }
 
