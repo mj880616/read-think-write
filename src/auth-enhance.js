@@ -1,23 +1,27 @@
 import { supabase } from './supabase.js';
-import { claimOwner, ownerSetupStatus, signInWithGoogle } from './auth-oauth.js';
+import { claimOwner, keepGoogleIdentityOnly, ownerSetupStatus, signInWithGoogle } from './auth-oauth.js';
 import * as api from './api.js';
 
 let checkingOwner = false;
 let lastCheckedUserId = null;
+let identityCleanupAttemptedFor = null;
 
 function addGoogleLoginButton() {
   const login = document.querySelector('.login');
-  if (!login || login.querySelector('#google-login')) return;
+  if (!login) return;
 
   const form = login.querySelector('#login-form');
-  if (!form) return;
+  form?.remove();
+
+  if (login.querySelector('#google-login')) return;
 
   const wrap = document.createElement('div');
+  wrap.className = 'form';
   wrap.innerHTML = `
-    <button type="button" class="btn secondary" id="google-login" style="width:100%;margin:0 0 14px">Google로 로그인</button>
-    <div class="auth-divider">또는 이메일로 로그인</div>
+    <button type="button" class="btn" id="google-login" style="width:100%">Google로 로그인</button>
+    <div class="status" id="login-status"></div>
   `;
-  login.insertBefore(wrap, form);
+  login.append(wrap);
 
   wrap.querySelector('#google-login').addEventListener('click', async (event) => {
     const button = event.currentTarget;
@@ -98,12 +102,23 @@ function renderNotOwner() {
   });
 }
 
+async function cleanOwnerIdentity(userId) {
+  if (identityCleanupAttemptedFor === userId) return;
+  identityCleanupAttemptedFor = userId;
+  try {
+    await keepGoogleIdentityOnly();
+  } catch (error) {
+    console.error('Email identity cleanup failed', error);
+  }
+}
+
 async function checkOwner() {
   if (checkingOwner) return;
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
   if (!user) {
     lastCheckedUserId = null;
+    identityCleanupAttemptedFor = null;
     addGoogleLoginButton();
     return;
   }
@@ -115,6 +130,7 @@ async function checkOwner() {
     lastCheckedUserId = user.id;
     if (status === 'unclaimed') renderOwnerClaim(user);
     else if (status === 'not-owner') renderNotOwner();
+    else if (status === 'owner') await cleanOwnerIdentity(user.id);
   } catch (error) {
     console.error('Owner status check failed', error);
   } finally {
