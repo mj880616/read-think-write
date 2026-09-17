@@ -59,6 +59,7 @@ assert.deepEqual(
 );
 
 const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
+const mainSource = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
 const importFn = readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts', import.meta.url), 'utf8');
 
@@ -74,5 +75,10 @@ assert.match(importFn, /AbortSignal\.timeout|AbortController/);
 assert.match(importFn, /content-type/i);
 assert.match(importFn, /redirect:\s*['"]manual['"]/);
 assert.match(importFn, /MAX_BYTES/);
+
+assert.match(apiSource, /export async function importResourceUrl/);
+assert.match(mainSource, /URL로 가져오기/);
+assert.match(mainSource, /resource-import-form/);
+assert.match(mainSource, /normalizeImportResponse/);
 
 console.log('model tests passed');
