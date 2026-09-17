@@ -259,7 +259,24 @@ async function resourceDetailView(id) {
       <h1>${esc(resource.title)}</h1>
       <div class="muted">${esc(resource.author || '')}${resource.source_name ? ` · ${esc(resource.source_name)}` : ''}</div>
       ${resource.original_title ? `<div class="meta">${esc(resource.original_title)}</div>` : ''}
-      ${originalUrl ? `<div class="inline-actions"><a class="btn secondary small" target="_blank" rel="noopener noreferrer" href="${esc(originalUrl)}">원문 열기</a></div>` : ''}
+      <div class="inline-actions">
+        ${originalUrl ? `<a class="btn secondary small" target="_blank" rel="noopener noreferrer" href="${esc(originalUrl)}">원문 열기</a>` : ''}
+        <button class="btn secondary small" id="resource-edit-toggle" type="button">원문·정보 수정</button>
+      </div>
+    </section>
+    <section class="article-note card" id="resource-edit-card" hidden>
+      <h2>원문·정보 수정</h2>
+      <form class="form" id="resource-edit-form">
+        <div class="field"><label>제목</label><input name="title" value="${esc(resource.title)}" required></div>
+        <div class="field"><label>원제</label><input name="original_title" value="${esc(resource.original_title || '')}"></div>
+        <div class="field"><label>저자</label><input name="author" value="${esc(resource.author || '')}"></div>
+        <div class="field"><label>출처</label><input name="source_name" value="${esc(resource.source_name || '')}"></div>
+        <div class="field"><label>발표일</label><input type="date" name="published_on" value="${esc(resource.published_on || '')}"></div>
+        <div class="field"><label>원문 링크</label><input type="url" name="original_url" value="${esc(resource.original_url || '')}" placeholder="나중에 원문 URL을 추가할 수 있음"></div>
+        <div class="field"><label>본문/번역문</label><textarea name="body_md">${esc(resource.body_md || '')}</textarea></div>
+        <div class="inline-actions"><button class="btn" type="submit">수정 저장</button><button class="btn secondary" id="resource-edit-cancel" type="button">취소</button></div>
+        <div class="status" id="resource-edit-status"></div>
+      </form>
     </section>
     <article class="article">${renderMarkdown(resource.body_md || '') || '<p class="muted">본문이 아직 없음.</p>'}</article>
     <section class="article-note card">
@@ -275,6 +292,28 @@ async function resourceDetailView(id) {
   `, 'read');
   bindCommon();
   bindRelationToggles(relationMap);
+
+  const editCard = document.querySelector('#resource-edit-card');
+  document.querySelector('#resource-edit-toggle')?.addEventListener('click', () => {
+    editCard.hidden = !editCard.hidden;
+    if (!editCard.hidden) editCard.querySelector('input[name="title"]')?.focus();
+  });
+  document.querySelector('#resource-edit-cancel')?.addEventListener('click', () => { editCard.hidden = true; });
+  document.querySelector('#resource-edit-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const status = document.querySelector('#resource-edit-status');
+    status.textContent = '저장 중…';
+    status.classList.remove('error');
+    try {
+      const form = Object.fromEntries(new FormData(event.currentTarget));
+      await api.updateResource(id, form);
+      await refreshState();
+      resourceDetailView(id);
+    } catch (error) {
+      status.textContent = error.message;
+      status.classList.add('error');
+    }
+  });
 
   document.querySelector('#resource-note-form').addEventListener('submit', async (event) => {
     event.preventDefault();
