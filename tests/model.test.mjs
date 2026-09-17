@@ -77,6 +77,8 @@ assert.match(importFn, /AbortSignal\.timeout|AbortController/);
 assert.match(importFn, /content-type/i);
 assert.match(importFn, /redirect:\s*['"]manual['"]/);
 assert.match(importFn, /MAX_BYTES/);
+assert.match(importFn, /rtw_setup_state/);
+assert.match(importFn, /owner_user_id/);
 
 assert.match(apiSource, /export async function importResourceUrl/);
 assert.match(importUiSource, /URL로 가져오기/);
@@ -91,6 +93,8 @@ assert.match(aiFn, /rtw_topics/);
 assert.match(aiFn, /rtw_questions/);
 assert.match(aiFn, /json_schema/);
 assert.match(aiFn, /store:\s*false/);
+assert.match(aiFn, /rtw_setup_state/);
+assert.match(aiFn, /owner_user_id/);
 
 assert.match(apiSource, /export async function analyzeResource/);
 assert.match(aiUiSource, /GPT로 읽기/);
