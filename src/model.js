@@ -48,3 +48,12 @@ export function validateSignupInput(email, password, passwordConfirm) {
   }
   return { ok: true, message: '' };
 }
+
+export function rememberLoginUntil(now = Date.now()) {
+  return now + 30 * 24 * 60 * 60 * 1000;
+}
+
+export function isRememberedLoginValid(value, now = Date.now()) {
+  const until = Number(value);
+  return Number.isFinite(until) && until > now;
+}
