@@ -18,6 +18,16 @@ export function matchesQuery(item, query, fields) {
 
 export function formatDate(date) {
   if (!date) return '';
-  const [y,m,d] = date.split('-').map(Number);
-  return `${y}.${String(m).padStart(2,'0')}.${String(d).padStart(2,'0')}`;
+  const [y, m, d] = date.split('-').map(Number);
+  return `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')}`;
+}
+
+export function safeHttpUrl(value) {
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch {
+    return '';
+  }
 }
