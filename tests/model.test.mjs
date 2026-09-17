@@ -60,6 +60,7 @@ assert.deepEqual(
 
 const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
 const importUiSource = readFileSync(new URL('../src/reading-import-ui.js', import.meta.url), 'utf8');
+const aiUiSource = readFileSync(new URL('../src/reading-ai-ui.js', import.meta.url), 'utf8');
 const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
 const importFn = readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts', import.meta.url), 'utf8');
 const aiFn = readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts', import.meta.url), 'utf8');
@@ -90,5 +91,14 @@ assert.match(aiFn, /rtw_topics/);
 assert.match(aiFn, /rtw_questions/);
 assert.match(aiFn, /json_schema/);
 assert.match(aiFn, /store:\s*false/);
+
+assert.match(apiSource, /export async function analyzeResource/);
+assert.match(aiUiSource, /GPT로 읽기/);
+assert.match(aiUiSource, /나의 생각 확장/);
+assert.match(aiUiSource, /메모로 저장/);
+assert.match(aiUiSource, /질문으로 저장/);
+assert.match(aiUiSource, /createNote/);
+assert.match(aiUiSource, /createQuestion/);
+assert.match(aiUiSource, /addRelation/);
 
 console.log('model tests passed');
