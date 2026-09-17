@@ -45,7 +45,7 @@ export async function createTopic(name, userId) {
   const { data, error } = await supabase.from('rtw_topics').insert({ owner_id: userId, name: clean, slug, summary: '' }).select().single(); fail(error); return data;
 }
 export async function listQuestions() { const { data, error } = await supabase.from('rtw_questions').select('*').order('updated_at', { ascending: false }); fail(error); return data ?? []; }
-export async function createQuestion(body, userId) { const { data, error } = await supabase.from('rtw_questions').insert({ owner_id: userId, body: body.trim(), current_thought: '', status: 'active' }).select().single(); fail(error); return data; }
+export async function createQuestion(body, userId) { const { data, error } = await supabase.from('rtw_questions').insert({ owner_id: userId, body: body.trim(), current_thought: '', status: 'open' }).select().single(); fail(error); return data; }
 
 export async function listRelations(sourceType, sourceId) {
   const { data, error } = await supabase.from('rtw_relations').select('*').eq('source_type', sourceType).eq('source_id', sourceId); fail(error); return data ?? [];
