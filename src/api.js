@@ -45,6 +45,17 @@ export async function getResource(id) {
   return data;
 }
 
+export async function importResourceUrl(url) {
+  const clean = String(url ?? '').trim();
+  if (!clean) throw new Error('가져올 URL을 입력하세요.');
+  const { data, error } = await supabase.functions.invoke('rtw-url-import', {
+    body: { url: clean }
+  });
+  fail(error);
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 export async function createResource(input, userId) {
   const row = {
     owner_id: userId,
