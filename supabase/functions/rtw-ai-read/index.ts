@@ -30,6 +30,18 @@ async function userOf(req: Request) {
   return data.user;
 }
 
+async function assertRtwOwner(userId: string) {
+  const { data, error } = await admin
+    .from('rtw_setup_state')
+    .select('owner_user_id')
+    .eq('id', 'owner')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.owner_user_id || data.owner_user_id !== userId) {
+    throw new Error('이 개인 저장소의 소유자만 사용할 수 있습니다.');
+  }
+}
+
 function outputText(response: any) {
   for (const item of response.output || []) {
     if (item.type !== 'message') continue;
@@ -68,6 +80,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
     const user = await userOf(req);
+    await assertRtwOwner(user.id);
     const input = await req.json();
     const resourceId = String(input?.resource_id || '').trim();
     const mode = input?.mode === 'expand' ? 'expand' : 'read';
