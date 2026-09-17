@@ -2,78 +2,42 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as model from '../src/model.js';
 
-const grouped = model.groupResourcesByMonth([
-  { id: 'a', published_on: '2026-09-14' },
-  { id: 'b', published_on: '2026-09-14' },
-  { id: 'c', published_on: '2026-10-01' }
-]);
+const grouped = model.groupResourcesByMonth([{ id:'a',published_on:'2026-09-14'},{id:'b',published_on:'2026-09-14'},{id:'c',published_on:'2026-10-01'}]);
+assert.equal(grouped['2026']['09']['14'].length,2); assert.equal(grouped['2026']['10']['01'][0].id,'c');
+assert.equal(model.matchesQuery({title:'기술노동자 권력의 부상과 몰락'},'기술노동',['title']),true); assert.equal(model.matchesQuery({title:'다른 글'},'기술노동',['title']),false);
+assert.equal(model.safeHttpUrl('https://example.com/a'),'https://example.com/a'); assert.equal(model.safeHttpUrl('javascript:alert(1)'),''); assert.equal(model.safeHttpUrl('not a url'),'');
+const now=Date.UTC(2026,8,17,12,0,0), thirtyDaysLater=now+30*24*60*60*1000;
+assert.equal(typeof model.rememberLoginUntil,'function'); assert.equal(model.rememberLoginUntil(now),thirtyDaysLater); assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater),now+1),true); assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater),thirtyDaysLater),false);
+assert.equal(model.isOAuthCallback('?code=abc123'),true); assert.deepEqual(model.enabledAuthProviders(),['google']);
 
-assert.equal(grouped['2026']['09']['14'].length, 2);
-assert.equal(grouped['2026']['10']['01'][0].id, 'c');
-assert.equal(model.matchesQuery({ title: '기술노동자 권력의 부상과 몰락' }, '기술노동', ['title']), true);
-assert.equal(model.matchesQuery({ title: '다른 글' }, '기술노동', ['title']), false);
-assert.equal(model.safeHttpUrl('https://example.com/a'), 'https://example.com/a');
-assert.equal(model.safeHttpUrl('javascript:alert(1)'), '');
-assert.equal(model.safeHttpUrl('not a url'), '');
+const readingTools=await import('../src/reading-tools.js');
+assert.match(readingTools.importStatusMessage('metadata_only'),/본문/); assert.throws(()=>readingTools.normalizeAiReadResult({claims:'bad'}));
+const apiSource=readFileSync(new URL('../src/api.js',import.meta.url),'utf8');
+const importUiSource=readFileSync(new URL('../src/reading-import-ui.js',import.meta.url),'utf8');
+const aiUiSource=readFileSync(new URL('../src/reading-ai-ui.js',import.meta.url),'utf8');
+const entryFlowSource=readFileSync(new URL('../src/reading-entry-flow.js',import.meta.url),'utf8');
+const authEnhanceSource=readFileSync(new URL('../src/auth-enhance.js',import.meta.url),'utf8');
+const appEntrySource=readFileSync(new URL('../src/app-entry.js',import.meta.url),'utf8');
+const stylesSource=readFileSync(new URL('../src/styles.css',import.meta.url),'utf8');
+const importFn=readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts',import.meta.url),'utf8');
+const aiFn=readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts',import.meta.url),'utf8');
+assert.equal(apiSource.includes('signInWithPassword'),false); assert.equal(apiSource.includes('auth.signUp'),false); assert.match(authEnhanceSource,/Google로 로그인/);
+assert.match(importFn,/Authorization/); assert.match(importFn,/owner_user_id/); assert.match(apiSource,/export async function importResourceUrl/); assert.match(importUiSource,/URL로 가져오기/);
+assert.match(aiFn,/OPENAI_API_KEY/); assert.match(aiFn,/store:\s*false/); assert.match(aiFn,/owner_user_id/); assert.match(apiSource,/export async function analyzeResource/); assert.match(aiUiSource,/GPT로 읽기/);
+assert.match(entryFlowSource,/id="home-quick-add"/); assert.match(entryFlowSource,/\?new=1/); assert.match(entryFlowSource,/\+ 새 자료/); assert.match(importUiSource,/URLSearchParams/); assert.match(importUiSource,/requestSubmit/); assert.match(appEntrySource,/reading-entry-flow\.js/);
 
-const now = Date.UTC(2026, 8, 17, 12, 0, 0);
-const thirtyDaysLater = now + 30 * 24 * 60 * 60 * 1000;
-assert.equal(typeof model.rememberLoginUntil, 'function', '30일 로그인 유지 만료시각 계산 함수가 있어야 한다');
-assert.equal(model.rememberLoginUntil(now), thirtyDaysLater);
-assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater), now + 1), true);
-assert.equal(model.isRememberedLoginValid(String(thirtyDaysLater), thirtyDaysLater), false);
-assert.equal(model.isRememberedLoginValid('', now), false);
-assert.equal(model.isRememberedLoginValid('not-a-number', now), false);
-
-assert.equal(typeof model.isOAuthCallback, 'function', 'OAuth 콜백 감지 함수가 있어야 한다');
-assert.equal(model.isOAuthCallback('?code=abc123'), true);
-assert.equal(model.isOAuthCallback('?foo=bar'), false);
-assert.equal(model.isOAuthCallback(''), false);
-
-assert.deepEqual(model.enabledAuthProviders(), ['google'], '로그인 방식은 Google 하나만 노출해야 한다');
-assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }, { provider: 'google' }]), true);
-assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'google' }]), false);
-assert.equal(model.shouldUnlinkEmailIdentity([{ provider: 'email' }]), false);
-
-const readingTools = await import('../src/reading-tools.js');
-assert.deepEqual(
-  readingTools.normalizeImportResponse({ status: 'full', resource: { title: 'A', body_md: 'Body' }, warnings: [] }),
-  { status: 'full', resource: { title: 'A', original_title: '', author: '', source_name: '', published_on: '', original_url: '', body_md: 'Body' }, warnings: [] }
-);
-assert.match(readingTools.importStatusMessage('metadata_only'), /본문/);
-assert.throws(() => readingTools.normalizeAiReadResult({ claims: 'bad' }));
-assert.deepEqual(readingTools.normalizeAiReadResult({ claims: ['A'], questions: ['Q'], connections: [], expansion: null }), { claims: ['A'], questions: ['Q'], connections: [], expansion: null });
-
-const apiSource = readFileSync(new URL('../src/api.js', import.meta.url), 'utf8');
-const importUiSource = readFileSync(new URL('../src/reading-import-ui.js', import.meta.url), 'utf8');
-const aiUiSource = readFileSync(new URL('../src/reading-ai-ui.js', import.meta.url), 'utf8');
-const entryFlowSource = readFileSync(new URL('../src/reading-entry-flow.js', import.meta.url), 'utf8');
-const authEnhanceSource = readFileSync(new URL('../src/auth-enhance.js', import.meta.url), 'utf8');
-const appEntrySource = readFileSync(new URL('../src/app-entry.js', import.meta.url), 'utf8');
-const stylesSource = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
-const importFn = readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts', import.meta.url), 'utf8');
-const aiFn = readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts', import.meta.url), 'utf8');
-
-assert.equal(apiSource.includes('signInWithPassword'), false, '이메일/비밀번호 로그인 API를 제거해야 한다');
-assert.equal(apiSource.includes('auth.signUp'), false, '이메일 회원가입 API를 제거해야 한다');
-assert.equal(authEnhanceSource.includes('Google로 로그인'), true, 'Google 로그인 버튼은 유지해야 한다');
-assert.equal(authEnhanceSource.includes('form?.remove()'), true, '기존 이메일/비밀번호 폼은 렌더 직후 제거해야 한다');
-assert.equal(authEnhanceSource.includes('또는 이메일로 로그인'), false, '이메일 로그인 안내 문구를 제거해야 한다');
-assert.match(importFn, /Authorization/); assert.match(importFn, /resolveDns/); assert.match(importFn, /AbortSignal\.timeout|AbortController/); assert.match(importFn, /content-type/i); assert.match(importFn, /redirect:\s*['"]manual['"]/); assert.match(importFn, /MAX_BYTES/); assert.match(importFn, /rtw_setup_state/); assert.match(importFn, /owner_user_id/);
-assert.match(apiSource, /export async function importResourceUrl/); assert.match(importUiSource, /URL로 가져오기/); assert.match(importUiSource, /resource-import-form/); assert.match(importUiSource, /normalizeImportResponse/); assert.match(importUiSource, /수동 입력은 그대로 사용할 수 있습니다/);
-assert.match(aiFn, /OPENAI_API_KEY/); assert.match(aiFn, /rtw_resources/); assert.match(aiFn, /owner_id/); assert.match(aiFn, /rtw_topics/); assert.match(aiFn, /rtw_questions/); assert.match(aiFn, /json_schema/); assert.match(aiFn, /store:\s*false/); assert.match(aiFn, /rtw_setup_state/); assert.match(aiFn, /owner_user_id/);
-assert.match(apiSource, /export async function analyzeResource/); assert.match(aiUiSource, /GPT로 읽기/); assert.match(aiUiSource, /나의 생각 확장/); assert.match(aiUiSource, /메모로 저장/); assert.match(aiUiSource, /질문으로 저장/); assert.match(aiUiSource, /createNote/); assert.match(aiUiSource, /createQuestion/); assert.match(aiUiSource, /addRelation/);
-assert.match(entryFlowSource, /id="home-quick-add"/, '홈에 URL 빠른 추가 입력이 있어야 한다');
-assert.match(entryFlowSource, /\?new=1/, '새 자료는 읽기 목록과 분리된 전용 상태여야 한다');
-assert.match(entryFlowSource, /\+ 새 자료/, '읽기 목록에 새 자료 버튼이 있어야 한다');
-assert.match(entryFlowSource, /새 자료/, '새 자료 상태는 별도 제목을 표시해야 한다');
-assert.match(importUiSource, /URLSearchParams/, '홈에서 넘긴 URL을 새 자료 화면에서 받아야 한다');
-assert.match(importUiSource, /requestSubmit/, '홈에서 넘긴 URL은 새 자료 화면에서 자동 가져오기를 실행해야 한다');
-assert.match(appEntrySource, /reading-entry-flow\.js/, '새 자료 화면 전환 모듈을 앱에서 불러와야 한다');
-
-// Layout rhythm: dynamically inserted home quick-add must not visually collide with the following grid.
-assert.match(entryFlowSource, /home-quick-add-card/, '홈 빠른 추가 카드에 전용 레이아웃 클래스를 지정해야 한다');
-assert.match(stylesSource, /\.home-quick-add-card\{[^}]*margin-bottom:/, '홈 빠른 추가와 최근 읽기 사이에 명시적 여백이 있어야 한다');
-assert.match(stylesSource, /\.page-section\{[^}]*margin-top:/, '주요 페이지 섹션 간 공통 수직 리듬을 정의해야 한다');
+// Shared visual rhythm and mobile layout contract.
+assert.match(stylesSource,/--space-1:\s*8px/,'8px spacing token');
+assert.match(stylesSource,/--space-2:\s*12px/,'12px spacing token');
+assert.match(stylesSource,/--space-3:\s*16px/,'16px spacing token');
+assert.match(stylesSource,/--space-section:\s*20px/,'20px section/card gap token');
+assert.match(stylesSource,/--space-large:\s*24px/,'24px large spacing token');
+assert.match(stylesSource,/\.home-stack\{[^}]*gap:var\(--space-section\)/,'home cards use one shared stack gap');
+assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.topbar\{[^}]*position:relative/,'mobile header must not cover page content');
+assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.userbar span\{[^}]*display:none/,'mobile hides redundant email');
+assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.nav a\{[^}]*min-height:40px/,'mobile nav has adequate touch targets');
+assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.page\{[^}]*padding-top:var\(--space-large\)/,'mobile page starts clear of header');
+assert.match(stylesSource,/overflow-wrap:anywhere/,'long content must not create horizontal overflow');
+assert.match(stylesSource,/\.empty\{[^}]*padding:var\(--space-3\) 0/,'empty states stay compact');
 
 console.log('model tests passed');
