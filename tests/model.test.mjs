@@ -39,7 +39,8 @@ assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.nav a\{[^}]*min-hei
 assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.page\{[^}]*padding-top:var\(--space-large\)/,'mobile page starts clear of header');
 assert.match(stylesSource,/overflow-wrap:anywhere/,'long content must not create horizontal overflow');
 assert.match(stylesSource,/\.empty\{[^}]*padding:var\(--space-3\) 0/,'empty states stay compact');
-assert.match(aiUiSource,/className = 'item reading-ai-suggestion'/,'AI suggestion items have a dedicated spacing hook');
-assert.match(stylesSource,/\.reading-ai-suggestion \.btn\{[^}]*margin-top:var\(--space-2\)/,'AI save/connect actions keep space below suggestion text');
+assert.match(aiUiSource,/function textSection/,'AI results render as selectable text sections');
+assert.equal(/메모로 저장|질문으로 저장|>연결</.test(aiUiSource),false,'AI result save/connect buttons are removed');
+assert.equal(/createNote|createQuestion|addRelation/.test(aiUiSource),false,'AI reading UI does not write records directly');
 
 console.log('model tests passed');
