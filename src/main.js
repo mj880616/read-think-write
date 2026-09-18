@@ -42,7 +42,7 @@ function routeLink(label, path, active) {
 function shell(content, active = 'home') {
   return `<div class="shell">
     <header class="topbar">
-      <a class="brand" href="${href('/')}" data-nav="/">읽고 생각하고 쓰기</a>
+      <a class="brand" href="${href('/')}" data-nav="/">읽고 생각하고 기록하기</a>
       <nav class="nav">
         ${routeLink('홈', '/', active === 'home')}
         ${routeLink('읽기', '/read/', active === 'read')}
@@ -86,7 +86,7 @@ function loginView() {
   root.innerHTML = `<div class="shell login-wrap">
     <section class="login">
       <div class="eyebrow">Personal knowledge archive</div>
-      <h1>읽고 생각하고 쓰기</h1>
+      <h1>읽고 생각하고 기록하기</h1>
       <p class="muted">읽은 것을 저장하는 데서 끝내지 않고, 생각과 질문을 다시 연결하는 개인 작업공간.</p>
       <form id="login-form" class="form">
         <div class="field"><label>이메일</label><input name="email" type="email" autocomplete="email" required></div>
