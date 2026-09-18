@@ -6,7 +6,7 @@ try {
   console.error('OAuth callback failed', error);
 }
 
-await import('./main.js?v=20260918-7');
+await import('./main.js?v=20260918-8');
 await import('./auth-enhance.js?v=20260918-5');
 await import('./reading-entry-flow.js?v=20260918-5');
 await import('./reading-import-ui.js?v=20260918-5');
