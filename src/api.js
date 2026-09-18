@@ -80,7 +80,7 @@ export async function analyzeResource(resourceId, mode = 'read') {
   return data;
 }
 
-export async function recommendResources(excludeIds = []) {
+export async function recommendResources(excludeUrls = []) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   fail(sessionError);
   const token = sessionData?.session?.access_token;
@@ -94,7 +94,7 @@ export async function recommendResources(excludeIds = []) {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ exclude_ids: excludeIds })
+      body: JSON.stringify({ exclude_urls: excludeUrls })
     });
   } catch {
     throw new Error('추천 서버에 연결하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도하세요.');
