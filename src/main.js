@@ -151,6 +151,26 @@ function questionLink(question) {
   return `<a href="${href(`/questions/${question.id}/`)}" data-nav="/questions/${question.id}/">${esc(question.body)}</a>`;
 }
 
+const RECOMMEND_HISTORY_KEY = 'rtw_recommend_history_v1';
+
+function recommendationHistory() {
+  try {
+    const value = JSON.parse(localStorage.getItem(RECOMMEND_HISTORY_KEY) || '[]');
+    return Array.isArray(value) ? value.map(String).slice(0, 9) : [];
+  } catch {
+    return [];
+  }
+}
+
+function recommendationRows(items) {
+  return items.map((item) => `
+    <a class="home-recommend-row" href="${href('/read/'+item.id+'/')}" data-nav="/read/${item.id}/">
+      <strong class="home-recommend-title">${esc(item.title)}</strong>
+      <span class="home-recommend-meta">${esc(item.author || '저자 미상')}${item.published_on ? ` · ${formatDate(item.published_on)}` : ''}</span>
+      <span class="home-recommend-reason">${esc(item.reason)}</span>
+    </a>`).join('');
+}
+
 function homeView() {
   const resources = state.resources.slice(0, 4);
   const notes = state.notes.slice(0, 4);
@@ -163,6 +183,11 @@ function homeView() {
       <div class="eyebrow">나의 생각 저장소</div>
       <h1>읽은 것이 생각이 되고,<br>생각이 다시 글이 되는 곳.</h1>
       <p>최근 기록에서 다시 시작한다. 날짜는 기억을 복원하고, 주제와 질문은 서로 떨어진 생각을 연결한다.</p>
+      <div class="home-recommend">
+        <button type="button" class="btn secondary small" id="home-recommend-button">랜덤 글 3개</button>
+        <span class="home-recommend-status" id="home-recommend-status"></span>
+        <div class="home-recommend-list" id="home-recommend-list"></div>
+      </div>
     </section>
     <section class="grid">
       <div class="card"><h2>최근 읽기</h2><div class="stack">${resources.map(resourceItem).join('') || empty('아직 저장된 글이 없음')}</div></div>
@@ -173,6 +198,30 @@ function homeView() {
     </section>
   `, 'home');
   bindCommon();
+
+  const button = document.querySelector('#home-recommend-button');
+  const status = document.querySelector('#home-recommend-status');
+  const list = document.querySelector('#home-recommend-list');
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    status.textContent = '최근 기록을 연결하는 중…';
+    try {
+      let history = recommendationHistory();
+      if (state.resources.length - history.length < 3) history = [];
+      const items = await api.recommendResources(history);
+      list.innerHTML = recommendationRows(items);
+      const nextHistory = [...items.map((item) => String(item.id)), ...history]
+        .filter((id, index, all) => all.indexOf(id) === index)
+        .slice(0, 9);
+      localStorage.setItem(RECOMMEND_HISTORY_KEY, JSON.stringify(nextHistory));
+      status.textContent = '';
+      bindCommon();
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
 }
 
 function readListView() {
