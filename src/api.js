@@ -35,6 +35,13 @@ export async function currentUser() {
   return data?.user ?? null;
 }
 
+export async function claimPersonalOwner() {
+  const { data, error } = await supabase.functions.invoke('rtw-claim-personal-owner', { body: {} });
+  await failFunction(error);
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
 export async function deleteAccount() {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   fail(sessionError);
