@@ -9,6 +9,16 @@ import { restoreRedirect } from './redirect.js';
 restoreRedirect();
 
 const root = document.querySelector('#app');
+const PRIMARY_TABS = [
+  { key: 'home', label: '홈', path: '/' },
+  { key: 'read', label: '읽기', path: '/read/' },
+  { key: 'bookmarks', label: '책갈피', path: '/bookmarks/' },
+  { key: 'notes', label: '생각', path: '/notes/' },
+  { key: 'topics', label: '주제', path: '/topics/' },
+  { key: 'questions', label: '질문', path: '/questions/' },
+  { key: 'archive', label: '아카이브', path: '/archive/2026/' },
+  { key: 'search', label: '검색', path: '/search/' }
+];
 let user = null;
 let state = { resources: [], notes: [], topics: [], questions: [], bookmarks: [] };
 
@@ -44,14 +54,7 @@ function shell(content, active = 'home') {
     <header class="topbar">
       <a class="brand" href="${href('/')}" data-nav="/">읽고 생각하고 기록하기</a>
       <nav class="nav">
-        ${routeLink('홈', '/', active === 'home')}
-        ${routeLink('읽기', '/read/', active === 'read')}
-        ${routeLink('책갈피', '/bookmarks/', active === 'bookmarks')}
-        ${routeLink('생각', '/notes/', active === 'notes')}
-        ${routeLink('주제', '/topics/', active === 'topics')}
-        ${routeLink('질문', '/questions/', active === 'questions')}
-        ${routeLink('아카이브', '/archive/2026/', active === 'archive')}
-        ${routeLink('검색', '/search/', active === 'search')}
+${PRIMARY_TABS.map(tab => routeLink(tab.label, tab.path, active === tab.key)).join('')}
       </nav>
       <div class="userbar">
         <span>${esc(user?.email || '')}</span>
@@ -631,6 +634,90 @@ async function render() {
   return notFound();
 }
 
+function primaryTabIndex() {
+  const path = pathFromLocation();
+  return PRIMARY_TABS.findIndex((tab) => {
+    if (tab.key === 'home') return path === '/' || path === '';
+    if (tab.key === 'archive') return /^\/archive\/\d{4}\/?$/.test(path);
+    return path === tab.path || path === tab.path.replace(/\/$/, '');
+  });
+}
+
+function bindPrimaryTabSwipe() {
+  let gesture = null;
+  const threshold = 64;
+  const intentDistance = 10;
+
+  const reset = (page, animate = true) => {
+    if (!page) return;
+    page.classList.toggle('swipe-snap', animate);
+    page.style.transform = '';
+    page.style.opacity = '';
+    if (animate) setTimeout(() => page.classList.remove('swipe-snap'), 220);
+  };
+
+  root.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'touch' || primaryTabIndex() < 0) return;
+    if (event.target.closest('input, textarea, select, button, [contenteditable="true"], [data-swipe-ignore], .resource-passage-bookmarks-list')) return;
+    const page = event.target.closest('.page');
+    if (!page) return;
+    gesture = { id: event.pointerId, page, x: event.clientX, y: event.clientY, dx: 0, mode: null };
+  }, { passive: true });
+
+  root.addEventListener('pointermove', (event) => {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    if (!gesture.mode && Math.max(Math.abs(dx), Math.abs(dy)) >= intentDistance) {
+      gesture.mode = Math.abs(dx) > Math.abs(dy) * 1.25 ? 'horizontal' : 'vertical';
+    }
+    if (gesture.mode !== 'horizontal') return;
+    gesture.dx = dx;
+    const index = primaryTabIndex();
+    const blocked = (dx > 0 && index === 0) || (dx < 0 && index === PRIMARY_TABS.length - 1);
+    const visualDx = blocked ? dx * 0.18 : dx * 0.55;
+    gesture.page.classList.add('swipe-dragging');
+    gesture.page.style.transform = `translateX(${visualDx}px)`;
+    gesture.page.style.opacity = String(Math.max(0.82, 1 - Math.abs(visualDx) / 900));
+  }, { passive: true });
+
+  const finish = (event) => {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const current = gesture;
+    gesture = null;
+    current.page.classList.remove('swipe-dragging');
+    if (current.mode !== 'horizontal' || Math.abs(current.dx) < threshold) {
+      reset(current.page);
+      return;
+    }
+    const index = primaryTabIndex();
+    const nextIndex = current.dx < 0 ? index + 1 : index - 1;
+    if (nextIndex < 0 || nextIndex >= PRIMARY_TABS.length) {
+      reset(current.page);
+      return;
+    }
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) {
+      navigate(PRIMARY_TABS[nextIndex].path);
+      return;
+    }
+    current.page.classList.add('swipe-commit');
+    current.page.style.transform = `translateX(${current.dx < 0 ? '-18%' : '18%'})`;
+    current.page.style.opacity = '0';
+    setTimeout(() => navigate(PRIMARY_TABS[nextIndex].path), 180);
+  };
+
+  root.addEventListener('pointerup', finish, { passive: true });
+  root.addEventListener('pointercancel', (event) => {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const current = gesture;
+    gesture = null;
+    current.page.classList.remove('swipe-dragging');
+    reset(current.page);
+  }, { passive: true });
+}
+
+bindPrimaryTabSwipe();
 window.addEventListener('popstate', render);
 supabase.auth.onAuthStateChange((_event, session) => {
   const next = session?.user ?? null;
