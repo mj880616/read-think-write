@@ -80,6 +80,15 @@ export async function analyzeResource(resourceId, mode = 'read') {
   return data;
 }
 
+export async function recommendResources(excludeIds = []) {
+  const { data, error } = await supabase.functions.invoke('rtw-recommend', {
+    body: { exclude_ids: excludeIds }
+  });
+  await failFunction(error);
+  if (data?.error) throw new Error(data.error);
+  return Array.isArray(data?.recommendations) ? data.recommendations : [];
+}
+
 export async function createResource(input, userId) {
   const row = {
     owner_id: userId,
