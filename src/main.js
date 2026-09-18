@@ -284,7 +284,7 @@ async function resourceDetailView(id) {
         <div class="status" id="resource-edit-status"></div>
       </form>
     </section>
-    <article class="article" id="resource-article">${renderMarkdown(resource.body_md || '') || '<p class="muted">본문이 아직 없음.</p>'}</article><div id="selection-bookmark-pop" hidden><button class="btn small" id="save-selection-bookmark" type="button">선택한 부분 책갈피</button></div>
+    <article class="article" id="resource-article">${renderMarkdown(resource.body_md || '') || '<p class="muted">본문이 아직 없음.</p>'}</article><div id="selection-bookmark-pop" hidden><div class="inline-actions"><button class="btn small" id="save-selection-bookmark" type="button">책갈피</button><button class="btn secondary small" id="save-selection-note" type="button">메모 저장</button></div></div>
     <section class="article-note card">
       <h2>나의 메모</h2>
       <form id="resource-note-form" class="form">
@@ -303,6 +303,7 @@ async function resourceDetailView(id) {
   const article=document.querySelector('#resource-article'); const pop=document.querySelector('#selection-bookmark-pop'); let pending=null;
   article?.addEventListener('mouseup',()=>{const s=window.getSelection();const t=s?.toString().trim()||'';if(!t||t.length>2000||!s.rangeCount||!article.contains(s.anchorNode)||!article.contains(s.focusNode)){pop.hidden=true;return;}const full=article.innerText;const start=full.indexOf(t);pending={text:t,start};pop.hidden=false;});
   document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();});
+  document.querySelector('#save-selection-note')?.addEventListener('click',async()=>{if(!pending)return;const memo=prompt('선택한 문장에 남길 메모를 입력하세요.');if(memo===null)return;const clean=memo.trim();if(!clean)return;await api.createNote({body:`> ${pending.text.replace(/\n/g,'\n> ')}\n\n${clean}`,note_type:'생각',resource_id:id},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();resourceDetailView(id);});
 
   const editCard = document.querySelector('#resource-edit-card');
   document.querySelector('#resource-edit-toggle')?.addEventListener('click', () => {
