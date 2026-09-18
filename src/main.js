@@ -273,7 +273,8 @@ async function resourceDetailView(id) {
         <button class="btn secondary small" id="resource-bookmark-toggle" type="button">${bookmarks.some(b=>b.bookmark_type==='resource') ? '★ 책갈피됨' : '☆ 책갈피'}</button> <button class="btn secondary small" id="resource-edit-toggle" type="button">원문·정보 수정</button>
       </div>
     </section>
-    ${bookmarks.some(b=>b.bookmark_type==='passage') ? `<section class="article-note card resource-passage-bookmarks"><h2>이 글의 책갈피</h2><div class="stack">${bookmarks.filter(b=>b.bookmark_type==='passage').map(b=>`<a class="item passage-bookmark-link" href="${href('/read/'+id+'/?bookmark='+encodeURIComponent(b.id))}" data-local-passage-bookmark="${b.id}"><blockquote>${esc(b.selected_text||'')}</blockquote>${b.note?`<div class="meta">메모 · ${esc(b.note)}</div>`:''}</a>`).join('')}</div></section>` : ''}
+    ${bookmarks.some(b=>b.bookmark_type==='passage') ? `<section class="resource-passage-bookmarks"><div class="resource-passage-bookmarks-title">이 글의 책갈피</div><div class="resource-passage-bookmarks-list">${bookmarks.filter(b=>b.bookmark_type==='passage').map(b=>`<a class="item passage-bookmark-link" href="${href('/read/'+id+'/?bookmark='+encodeURIComponent(b.id))}" data-local-passage-bookmark="${b.id}"><blockquote>${esc(b.selected_text||'')}</blockquote>${b.note?`<div class="meta">메모 · ${esc(b.note)}</div>`:''}</a>`).join('')}</div></section>` : ''}
+    <button class="back-to-top" id="back-to-top" type="button" aria-label="맨 위로">↑</button>
     <section class="article-note card" id="resource-edit-card" hidden>
       <h2>원문·정보 수정</h2>
       <form class="form" id="resource-edit-form">
@@ -302,6 +303,10 @@ async function resourceDetailView(id) {
   `, 'read');
   bindCommon();
   bindRelationToggles(relationMap);
+  const topButton=document.querySelector('#back-to-top');
+  const syncTopButton=()=>{if(topButton)topButton.classList.toggle('visible',window.scrollY>500);};
+  topButton?.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+  window.addEventListener('scroll',syncTopButton,{passive:true});syncTopButton();
   document.querySelectorAll('[data-local-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);resourceDetailView(id);}));
 
   document.querySelector('#resource-bookmark-toggle')?.addEventListener('click',async()=>{const old=bookmarks.find(b=>b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:id,bookmark_type:'resource'},user.id);await refreshState();resourceDetailView(id);});
