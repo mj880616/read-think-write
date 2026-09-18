@@ -81,12 +81,33 @@ export async function analyzeResource(resourceId, mode = 'read') {
 }
 
 export async function recommendResources(excludeIds = []) {
-  const { data, error } = await supabase.functions.invoke('rtw-recommend', {
-    body: { exclude_ids: excludeIds }
-  });
-  await failFunction(error);
-  if (data?.error) throw new Error(data.error);
-  return Array.isArray(data?.recommendations) ? data.recommendations : [];
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  fail(sessionError);
+  const token = sessionData?.session?.access_token;
+  if (!token) throw new Error('로그인 세션을 확인할 수 없습니다.');
+
+  let response;
+  try {
+    response = await fetch(`${supabase.supabaseUrl}/functions/v1/rtw-recommend`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ exclude_ids: excludeIds })
+    });
+  } catch {
+    throw new Error('추천 서버에 연결하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도하세요.');
+  }
+
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch {
+    throw new Error(`추천 서버 응답을 읽지 못했습니다. (HTTP ${response.status})`);
+  }
+  if (!response.ok || payload?.error) throw new Error(payload?.error || `추천 요청에 실패했습니다. (HTTP ${response.status})`);
+  return Array.isArray(payload?.recommendations) ? payload.recommendations : [];
 }
 
 export async function createResource(input, userId) {
