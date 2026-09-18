@@ -36,32 +36,6 @@ export async function signInWithGoogle() {
   if (error) throw error;
 }
 
-export async function ownerSetupStatus() {
-  const { data, error } = await supabase.functions.invoke('rtw-owner-claim', {
-    body: { action: 'status' }
-  });
-  if (error) throw new Error(functionErrorMessage(error, '소유자 상태를 확인하지 못했습니다.'));
-  return data?.status ?? 'not-owner';
-}
-
-export async function claimOwner(setupCode) {
-  const { data, error } = await supabase.functions.invoke('rtw-owner-claim', {
-    body: { action: 'claim', setupCode: String(setupCode ?? '').trim() }
-  });
-  if (error) {
-    let message = functionErrorMessage(error, '초기 설정에 실패했습니다.');
-    try {
-      const payload = await error.context?.json?.();
-      if (payload?.message) message = payload.message;
-    } catch {
-      // Keep the original function error.
-    }
-    throw new Error(message);
-  }
-  rememberLogin();
-  return data;
-}
-
 export async function keepGoogleIdentityOnly() {
   const { data, error } = await supabase.auth.getUserIdentities();
   if (error) throw error;
