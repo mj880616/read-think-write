@@ -1,4 +1,4 @@
-import { bootstrapOAuth } from './auth-oauth.js?v=20260918-2';
+import { bootstrapOAuth } from './auth-oauth.js?v=20260918-3';
 
 try {
   await bootstrapOAuth();
@@ -6,8 +6,8 @@ try {
   console.error('OAuth callback failed', error);
 }
 
-await import('./main.js?v=20260918-2');
-await import('./auth-enhance.js?v=20260918-2');
-await import('./reading-entry-flow.js?v=20260918-2');
-await import('./reading-import-ui.js?v=20260918-2');
-await import('./reading-ai-ui.js?v=20260918-2');
+await import('./main.js?v=20260918-3');
+await import('./auth-enhance.js?v=20260918-3');
+await import('./reading-entry-flow.js?v=20260918-3');
+await import('./reading-import-ui.js?v=20260918-3');
+await import('./reading-ai-ui.js?v=20260918-3');
