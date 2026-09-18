@@ -107,6 +107,7 @@ function loginView() {
       <div class="eyebrow">Personal knowledge archive</div>
       <h1>읽고 생각하고 기록하기</h1>
       <p class="muted">읽은 것을 저장하는 데서 끝내지 않고, 생각과 질문을 다시 연결하는 개인 작업공간.</p>
+      <p class="login-privacy">Google 로그인 정보는 계정 식별과 로그인에 사용하며, 저장한 글·메모·질문·책갈피는 계정별로 분리해 보관합니다. AI 읽기와 새 글 추천을 사용할 때에는 해당 기능에 필요한 기록 일부가 AI 처리에 사용됩니다. 계정 삭제 시 읽생기에 저장된 개인 데이터와 계정을 함께 삭제합니다.</p>
       <form id="login-form" class="form">
         <div class="field"><label>이메일</label><input name="email" type="email" autocomplete="email" required></div>
         <div class="field"><label>비밀번호</label><input name="password" type="password" autocomplete="current-password" required></div>
