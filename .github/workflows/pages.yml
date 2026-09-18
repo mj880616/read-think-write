@@ -48,26 +48,15 @@ jobs:
           styles_target.write_bytes(styles_source.read_bytes())
           text = text.replace("./src/styles.css", f"./src/{styles_name}")
 
-          entry_source = Path("src/app-entry.js")
-          entry_text = entry_source.read_text()
-          local_modules = [
-              "auth-oauth.js",
-              "main.js",
-              "auth-enhance.js",
-              "reading-entry-flow.js",
-              "reading-import-ui.js",
-              "reading-ai-ui.js",
-          ]
-          for module in local_modules:
-              source = Path("src") / module
-              target_name = f"{source.stem}.{version}{source.suffix}"
-              target = Path("src") / target_name
-              target.write_bytes(source.read_bytes())
-              entry_text = entry_text.replace(f"./{module}", f"./{target_name}")
+          js_sources = list(Path("src").glob("*.js"))
+          js_names = {source.name: f"{source.stem}.{version}{source.suffix}" for source in js_sources}
+          for source in js_sources:
+              module_text = source.read_text()
+              for original, fingerprinted in js_names.items():
+                  module_text = module_text.replace(f"./{original}", f"./{fingerprinted}")
+              (Path("src") / js_names[source.name]).write_text(module_text)
 
-          entry_name = f"app-entry.{version}.js"
-          (Path("src") / entry_name).write_text(entry_text)
-          text = text.replace("./src/app-entry.js", f"./src/{entry_name}")
+          text = text.replace("./src/app-entry.js", f"./src/{js_names['app-entry.js']}")
           index.write_text(text)
           PY
       - uses: actions/upload-pages-artifact@v3
