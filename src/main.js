@@ -10,7 +10,7 @@ restoreRedirect();
 
 const root = document.querySelector('#app');
 let user = null;
-let state = { resources: [], notes: [], topics: [], questions: [] };
+let state = { resources: [], notes: [], topics: [], questions: [], bookmarks: [] };
 
 function esc(value = '') {
   return String(value).replace(/[&<>'"]/g, (char) => ({
@@ -46,6 +46,7 @@ function shell(content, active = 'home') {
       <nav class="nav">
         ${routeLink('홈', '/', active === 'home')}
         ${routeLink('읽기', '/read/', active === 'read')}
+        ${routeLink('책갈피', '/bookmarks/', active === 'bookmarks')}
         ${routeLink('생각', '/notes/', active === 'notes')}
         ${routeLink('주제', '/topics/', active === 'topics')}
         ${routeLink('질문', '/questions/', active === 'questions')}
@@ -76,10 +77,10 @@ function bindCommon() {
 }
 
 async function refreshState() {
-  const [resources, notes, topics, questions] = await Promise.all([
-    api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions()
+  const [resources, notes, topics, questions, bookmarks] = await Promise.all([
+    api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks()
   ]);
-  state = { resources, notes, topics, questions };
+  state = { resources, notes, topics, questions, bookmarks };
 }
 
 function loginView() {
@@ -118,11 +119,15 @@ function empty(text) {
 }
 
 function resourceItem(resource) {
-  return `<div class="item">
+  const saved = state.bookmarks.some((b) => b.resource_id === resource.id && b.bookmark_type === 'resource');
+  return `<div class="item bookmark-resource-item"><button class="bookmark-star ${saved ? 'saved' : ''}" data-resource-bookmark="${resource.id}" type="button" aria-label="자료 책갈피">${saved ? '★' : '☆'}</button>
     <a href="${href(`/read/${resource.id}/`)}" data-nav="/read/${resource.id}/">${esc(resource.title)}</a>
     <div class="meta">${formatDate(resource.published_on)}${resource.author ? ` · ${esc(resource.author)}` : ''}${resource.source_name ? ` · ${esc(resource.source_name)}` : ''}</div>
   </div>`;
 }
+
+function bindResourceBookmarkButtons(){document.querySelectorAll('[data-resource-bookmark]').forEach(button=>button.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();const rid=button.dataset.resourceBookmark;const old=state.bookmarks.find(b=>b.resource_id===rid&&b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:rid,bookmark_type:'resource'},user.id);await refreshState();render();}));}
+function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const rb=state.bookmarks.filter(b=>b.bookmark_type==='resource');const pb=state.bookmarks.filter(b=>b.bookmark_type==='passage');root.innerHTML=shell(`<section class="hero"><div class="eyebrow">책갈피</div><h1>다시 볼 곳</h1><p>다시 읽을 자료와 본문에서 표시해 둔 대목을 모아 본다.</p></section><section class="card"><h2>자료</h2><div class="stack">${rb.map(b=>rm.get(b.resource_id)).filter(Boolean).map(resourceItem).join('')||empty('책갈피한 자료가 없음')}</div></section><section class="card" style="margin-top:20px"><h2>본문</h2><div class="stack">${pb.map(b=>{const rr=rm.get(b.resource_id);return `<div class="item passage-bookmark"><a href="${href('/read/'+b.resource_id+'/')}"><strong>${esc(rr?.title||'자료')}</strong></a><blockquote>${esc(b.selected_text||'')}</blockquote>${b.note?`<div class="meta">메모 · ${esc(b.note)}</div>`:''}<button class="btn secondary small" data-delete-bookmark="${b.id}" type="button">삭제</button></div>`}).join('')||empty('본문 책갈피가 없음')}</div></section>`,'bookmarks');bindCommon();bindResourceBookmarkButtons();document.querySelectorAll('[data-delete-bookmark]').forEach(x=>x.addEventListener('click',async()=>{await api.deleteBookmark(x.dataset.deleteBookmark);await refreshState();bookmarkView();}));}
 
 function noteItem(note) {
   const text = esc(note.body).replace(/\n/g, ' ');
@@ -185,6 +190,7 @@ function readListView() {
     </div>
   `, 'read');
   bindCommon();
+  bindResourceBookmarkButtons();
 
   document.querySelector('#resource-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -249,7 +255,7 @@ function bindRelationToggles(relationMap) {
 
 async function resourceDetailView(id) {
   const resource = state.resources.find((item) => item.id === id) || await api.getResource(id);
-  const [notes, relations] = await Promise.all([api.listNotes(id), api.listRelations('resource', id)]);
+  const [notes, relations, bookmarks] = await Promise.all([api.listNotes(id), api.listRelations('resource', id), api.listBookmarks(id)]);
   const relationMap = new Map([[`resource:${id}`, relations]]);
   const originalUrl = safeHttpUrl(resource.original_url);
 
@@ -261,7 +267,7 @@ async function resourceDetailView(id) {
       ${resource.original_title ? `<div class="meta">${esc(resource.original_title)}</div>` : ''}
       <div class="inline-actions">
         ${originalUrl ? `<a class="btn secondary small" target="_blank" rel="noopener noreferrer" href="${esc(originalUrl)}">원문 열기</a>` : ''}
-        <button class="btn secondary small" id="resource-edit-toggle" type="button">원문·정보 수정</button>
+        <button class="btn secondary small" id="resource-bookmark-toggle" type="button">${bookmarks.some(b=>b.bookmark_type==='resource') ? '★ 책갈피됨' : '☆ 책갈피'}</button> <button class="btn secondary small" id="resource-edit-toggle" type="button">원문·정보 수정</button>
       </div>
     </section>
     <section class="article-note card" id="resource-edit-card" hidden>
@@ -278,7 +284,7 @@ async function resourceDetailView(id) {
         <div class="status" id="resource-edit-status"></div>
       </form>
     </section>
-    <article class="article">${renderMarkdown(resource.body_md || '') || '<p class="muted">본문이 아직 없음.</p>'}</article>
+    <article class="article" id="resource-article">${renderMarkdown(resource.body_md || '') || '<p class="muted">본문이 아직 없음.</p>'}</article><div id="selection-bookmark-pop" hidden><button class="btn small" id="save-selection-bookmark" type="button">선택한 부분 책갈피</button></div>
     <section class="article-note card">
       <h2>나의 메모</h2>
       <form id="resource-note-form" class="form">
@@ -292,6 +298,11 @@ async function resourceDetailView(id) {
   `, 'read');
   bindCommon();
   bindRelationToggles(relationMap);
+
+  document.querySelector('#resource-bookmark-toggle')?.addEventListener('click',async()=>{const old=bookmarks.find(b=>b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:id,bookmark_type:'resource'},user.id);await refreshState();resourceDetailView(id);});
+  const article=document.querySelector('#resource-article'); const pop=document.querySelector('#selection-bookmark-pop'); let pending=null;
+  article?.addEventListener('mouseup',()=>{const s=window.getSelection();const t=s?.toString().trim()||'';if(!t||t.length>2000||!s.rangeCount||!article.contains(s.anchorNode)||!article.contains(s.focusNode)){pop.hidden=true;return;}const full=article.innerText;const start=full.indexOf(t);pending={text:t,start};pop.hidden=false;});
+  document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();});
 
   const editCard = document.querySelector('#resource-edit-card');
   document.querySelector('#resource-edit-toggle')?.addEventListener('click', () => {
@@ -566,6 +577,7 @@ async function render() {
   const path = pathFromLocation();
   if (path === '/' || path === '') return homeView();
   if (path === '/read/' || path === '/read') return readListView();
+  if (path === '/bookmarks/' || path === '/bookmarks') return bookmarkView();
 
   const resourceMatch = path.match(/^\/read\/([0-9a-f-]+)\/?$/);
   if (resourceMatch) return resourceDetailView(resourceMatch[1]);
