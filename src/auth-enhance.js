@@ -67,7 +67,6 @@ const observer = new MutationObserver(() => {
 observer.observe(document.documentElement, { childList: true, subtree: true });
 
 supabase.auth.onAuthStateChange(() => {
-  lastCheckedUserId = null;
   queueMicrotask(prepareSignedInUser);
 });
 
