@@ -233,3 +233,30 @@ export async function loadSearchCorpus() {
   ]);
   return { resources, notes, topics, questions };
 }
+
+
+export async function listBookmarks(resourceId = undefined) {
+  let query = supabase.from('rtw_bookmarks').select('*').order('created_at', { ascending: false });
+  if (resourceId) query = query.eq('resource_id', resourceId);
+  const { data, error } = await query;
+  fail(error);
+  return data ?? [];
+}
+
+export async function createBookmark(input, userId) {
+  const row = { owner_id: userId, resource_id: input.resource_id, bookmark_type: input.bookmark_type, selected_text: input.selected_text || null, context_before: input.context_before || null, context_after: input.context_after || null, start_offset: input.start_offset ?? null, end_offset: input.end_offset ?? null, note: input.note?.trim() || null };
+  const { data, error } = await supabase.from('rtw_bookmarks').insert(row).select().single();
+  fail(error);
+  return data;
+}
+
+export async function deleteBookmark(id) {
+  const { error } = await supabase.from('rtw_bookmarks').delete().eq('id', id);
+  fail(error);
+}
+
+export async function updateBookmarkNote(id, note) {
+  const { data, error } = await supabase.from('rtw_bookmarks').update({ note: note?.trim() || null, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+  fail(error);
+  return data;
+}
