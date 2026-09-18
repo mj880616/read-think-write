@@ -22,8 +22,8 @@ const stylesSource=readFileSync(new URL('../src/styles.css',import.meta.url),'ut
 const importFn=readFileSync(new URL('../supabase/functions/rtw-url-import/index.ts',import.meta.url),'utf8');
 const aiFn=readFileSync(new URL('../supabase/functions/rtw-ai-read/index.ts',import.meta.url),'utf8');
 assert.equal(apiSource.includes('signInWithPassword'),false); assert.equal(apiSource.includes('auth.signUp'),false); assert.match(authEnhanceSource,/Google로 로그인/);
-assert.match(importFn,/Authorization/); assert.match(importFn,/owner_user_id/); assert.match(apiSource,/export async function importResourceUrl/); assert.match(importUiSource,/URL로 가져오기/);
-assert.match(aiFn,/OPENAI_API_KEY/); assert.match(aiFn,/store:\s*false/); assert.match(aiFn,/owner_user_id/); assert.match(apiSource,/export async function analyzeResource/); assert.match(aiUiSource,/GPT로 읽기/);
+assert.match(importFn,/Authorization/); assert.equal(/owner_user_id|assertRtwOwner/.test(importFn),false,'URL import supports every authenticated user'); assert.match(apiSource,/export async function importResourceUrl/); assert.match(importUiSource,/URL로 가져오기/);
+assert.match(aiFn,/OPENAI_API_KEY/); assert.match(aiFn,/store:\s*false/); assert.match(aiFn,/\.eq\('owner_id', user\.id\)/,'AI reads only the signed-in user workspace'); assert.match(apiSource,/export async function analyzeResource/); assert.match(aiUiSource,/GPT로 읽기/);
 assert.match(apiSource,/export async function updateResource/,'saved reading resources can be edited later');
 const mainSource=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
 assert.match(mainSource,/원문·정보 수정/,'resource detail exposes edit action');
