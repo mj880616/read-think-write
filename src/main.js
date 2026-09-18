@@ -214,12 +214,6 @@ function homeView() {
         .slice(0, 9);
       localStorage.setItem(RECOMMEND_HISTORY_KEY, JSON.stringify(nextHistory));
       status.textContent = '';
-      list.querySelectorAll('[data-nav]').forEach((anchor) => {
-        anchor.addEventListener('click', (event) => {
-          event.preventDefault();
-          navigate(anchor.dataset.nav);
-        });
-      });
     } catch (error) {
       status.textContent = error.message;
     } finally {
