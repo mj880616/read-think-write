@@ -273,6 +273,7 @@ async function resourceDetailView(id) {
         <button class="btn secondary small" id="resource-bookmark-toggle" type="button">${bookmarks.some(b=>b.bookmark_type==='resource') ? '★ 책갈피됨' : '☆ 책갈피'}</button> <button class="btn secondary small" id="resource-edit-toggle" type="button">원문·정보 수정</button>
       </div>
     </section>
+    ${bookmarks.some(b=>b.bookmark_type==='passage') ? `<section class="article-note card resource-passage-bookmarks"><h2>이 글의 책갈피</h2><div class="stack">${bookmarks.filter(b=>b.bookmark_type==='passage').map(b=>`<a class="item passage-bookmark-link" href="${href('/read/'+id+'/?bookmark='+encodeURIComponent(b.id))}" data-local-passage-bookmark="${b.id}"><blockquote>${esc(b.selected_text||'')}</blockquote>${b.note?`<div class="meta">메모 · ${esc(b.note)}</div>`:''}</a>`).join('')}</div></section>` : ''}
     <section class="article-note card" id="resource-edit-card" hidden>
       <h2>원문·정보 수정</h2>
       <form class="form" id="resource-edit-form">
@@ -301,6 +302,7 @@ async function resourceDetailView(id) {
   `, 'read');
   bindCommon();
   bindRelationToggles(relationMap);
+  document.querySelectorAll('[data-local-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);resourceDetailView(id);}));
 
   document.querySelector('#resource-bookmark-toggle')?.addEventListener('click',async()=>{const old=bookmarks.find(b=>b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:id,bookmark_type:'resource'},user.id);await refreshState();resourceDetailView(id);});
   const article=document.querySelector('#resource-article'); const pop=document.querySelector('#selection-bookmark-pop'); let pending=null; let selectionTimer=null;
@@ -310,7 +312,7 @@ async function resourceDetailView(id) {
   article?.addEventListener('touchend',()=>{scheduleSelectionCapture(250);scheduleSelectionCapture(650);},{passive:true});
   document.addEventListener('selectionchange',()=>scheduleSelectionCapture(350));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSelectionCapture(200);});
-  document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();});
+  document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();resourceDetailView(id);});
   const bookmarkId=new URLSearchParams(location.search).get('bookmark');
   if(bookmarkId){
     const target=state.bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage'&&String(b.resource_id)===String(id));
