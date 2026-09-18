@@ -32,6 +32,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Generate deployment asset version
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          version = os.environ["GITHUB_SHA"][:12]
+          index = Path("index.html")
+          text = index.read_text()
+          text = text.replace('./src/styles.css"', f'./src/styles.css?v={version}"')
+          text = text.replace('./src/app-entry.js"', f'./src/app-entry.js?v={version}"')
+          index.write_text(text)
+
+          entry = Path("src/app-entry.js")
+          text = entry.read_text()
+          text = text.replace("import('./main.js')", f"import('./main.js?v={version}')")
+          entry.write_text(text)
+          PY
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
