@@ -1,9 +1,7 @@
 import { supabase } from './supabase.js';
-import { keepGoogleIdentityOnly, ownerSetupStatus, signInWithGoogle } from './auth-oauth.js';
+import { keepGoogleIdentityOnly, signInWithGoogle } from './auth-oauth.js';
 import * as api from './api.js';
 
-let checkingOwner = false;
-let lastCheckedUserId = null;
 let identityCleanupAttemptedFor = null;
 
 function addGoogleLoginButton() {
@@ -51,40 +49,27 @@ async function cleanOwnerIdentity(userId) {
   }
 }
 
-async function checkOwner() {
-  if (checkingOwner) return;
+async function prepareSignedInUser() {
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
   if (!user) {
-    lastCheckedUserId = null;
     identityCleanupAttemptedFor = null;
     addGoogleLoginButton();
     return;
   }
-  if (lastCheckedUserId === user.id) return;
-
-  checkingOwner = true;
-  try {
-    const status = await ownerSetupStatus();
-    lastCheckedUserId = user.id;
-    if (status === 'legacy-owner' || status === 'ready') await cleanOwnerIdentity(user.id);
-  } catch (error) {
-    console.error('Owner status check failed', error);
-  } finally {
-    checkingOwner = false;
-  }
+  await cleanOwnerIdentity(user.id);
 }
 
 const observer = new MutationObserver(() => {
   addGoogleLoginButton();
-  checkOwner();
+  prepareSignedInUser();
 });
 observer.observe(document.documentElement, { childList: true, subtree: true });
 
 supabase.auth.onAuthStateChange(() => {
   lastCheckedUserId = null;
-  queueMicrotask(checkOwner);
+  queueMicrotask(prepareSignedInUser);
 });
 
 addGoogleLoginButton();
-checkOwner();
+prepareSignedInUser();
