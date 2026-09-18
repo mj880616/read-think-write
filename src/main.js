@@ -58,6 +58,7 @@ ${PRIMARY_TABS.map(tab => routeLink(tab.label, tab.path, active === tab.key)).jo
       </nav>
       <div class="userbar">
         <span>${esc(user?.email || '')}</span>
+        <button class="btn secondary small" id="claim-personal-owner" type="button">개인 owner 지정</button>
         <button class="btn secondary small" id="logout">로그아웃</button>
         <button class="account-delete-link" id="delete-account" type="button">계정 삭제</button>
       </div>
@@ -73,6 +74,19 @@ function bindCommon() {
       navigate(anchor.dataset.nav);
     });
   });
+  document.querySelector('#claim-personal-owner')?.addEventListener('click', async (event) => {
+    if (!confirm('현재 로그인한 계정을 읽생기의 개인 owner로 지정할까요? 이 설정은 한 번만 할 수 있습니다.')) return;
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await api.claimPersonalOwner();
+      button.textContent = '개인 owner 지정됨';
+    } catch (error) {
+      button.disabled = false;
+      alert(error.message);
+    }
+  });
+
   document.querySelector('#logout')?.addEventListener('click', async () => {
     await api.signOut();
     user = null;
