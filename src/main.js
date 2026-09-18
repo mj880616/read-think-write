@@ -151,7 +151,7 @@ function questionLink(question) {
   return `<a href="${href(`/questions/${question.id}/`)}" data-nav="/questions/${question.id}/">${esc(question.body)}</a>`;
 }
 
-const RECOMMEND_HISTORY_KEY = 'rtw_recommend_history_v1';
+const RECOMMEND_HISTORY_KEY = 'rtw_web_recommend_history_v1';
 
 function recommendationHistory() {
   try {
@@ -164,7 +164,7 @@ function recommendationHistory() {
 
 function recommendationRows(items) {
   return items.map((item) => `
-    <a class="home-recommend-row" href="${href('/read/'+item.id+'/')}" data-nav="/read/${item.id}/">
+    <a class="home-recommend-row" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">
       <strong class="home-recommend-title">${esc(item.title)}</strong>
       <span class="home-recommend-meta">${esc(item.author || '저자 미상')}${item.published_on ? ` · ${formatDate(item.published_on)}` : ''}</span>
       <span class="home-recommend-reason">${esc(item.reason)}</span>
@@ -206,11 +206,10 @@ function homeView() {
     button.disabled = true;
     status.textContent = '최근 기록을 연결하는 중…';
     try {
-      let history = recommendationHistory();
-      if (state.resources.length - history.length < 3) history = [];
+      const history = recommendationHistory();
       const items = await api.recommendResources(history);
       list.innerHTML = recommendationRows(items);
-      const nextHistory = [...items.map((item) => String(item.id)), ...history]
+      const nextHistory = [...items.map((item) => String(item.url)), ...history]
         .filter((id, index, all) => all.indexOf(id) === index)
         .slice(0, 9);
       localStorage.setItem(RECOMMEND_HISTORY_KEY, JSON.stringify(nextHistory));
