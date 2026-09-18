@@ -7,3 +7,14 @@
 .bookmark-resource-item{position:relative;display:block;padding-right:42px}.bookmark-resource-copy{min-width:0}.bookmark-resource-copy>a{display:block}.bookmark-resource-copy .meta{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.bookmark-star{position:absolute;top:10px;right:0;display:grid;place-items:center;width:40px;height:40px;margin:0;padding:0;border:0;background:transparent;color:var(--muted);font:inherit;font-size:25px;line-height:1;cursor:pointer}.bookmark-star.saved{color:var(--accent)}
 
 .selection-bookmark-pop{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:1000;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:8px;box-shadow:0 8px 28px rgba(30,25,18,.16);width:max-content;max-width:calc(100vw - 24px)}.selection-bookmark-pop[hidden]{display:none!important}@media(max-width:760px){.selection-bookmark-pop{bottom:20px}.selection-bookmark-pop .inline-actions{flex-wrap:nowrap}.selection-bookmark-pop .btn{min-height:44px}}
+
+.resource-passage-bookmarks{max-width:800px;margin:10px auto 14px;padding:8px 10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12px}
+.resource-passage-bookmarks-title{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:3px}
+.resource-passage-bookmarks-list{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.resource-passage-bookmarks-list::-webkit-scrollbar{display:none}
+.resource-passage-bookmarks .passage-bookmark-link{flex:0 0 auto;max-width:220px;padding:3px 7px;border:1px solid var(--line);border-radius:7px;text-decoration:none;background:transparent}
+.resource-passage-bookmarks blockquote{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;line-height:1.35}
+.resource-passage-bookmarks .meta{font-size:10px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back-to-top{position:fixed;right:20px;bottom:20px;z-index:900;width:36px;height:36px;padding:0;border:1px solid var(--line);border-radius:50%;background:rgba(244,241,232,.94);color:var(--accent);font-size:18px;line-height:1;box-shadow:0 3px 12px rgba(30,25,18,.12);opacity:0;pointer-events:none;transform:translateY(6px);transition:opacity .15s,transform .15s}
+.back-to-top.visible{opacity:1;pointer-events:auto;transform:none}
+@media(max-width:760px){.resource-passage-bookmarks{margin:6px auto 10px;padding:6px 4px}.resource-passage-bookmarks-title{font-size:10px}.resource-passage-bookmarks .passage-bookmark-link{max-width:170px}.back-to-top{right:12px;bottom:14px;width:34px;height:34px}}
