@@ -215,6 +215,7 @@ function homeView() {
     </section>
   `, 'home');
   bindCommon();
+  bindResourceBookmarkButtons();
 
   const button = document.querySelector('#home-recommend-button');
   const status = document.querySelector('#home-recommend-status');
