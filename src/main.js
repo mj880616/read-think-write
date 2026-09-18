@@ -313,7 +313,7 @@ async function resourceDetailView(id) {
   document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();});
   const bookmarkId=new URLSearchParams(location.search).get('bookmark');
   if(bookmarkId){
-    const target=bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage');
+    const target=state.bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage'&&String(b.resource_id)===String(id));
     if(target){
       const articleText=article?.innerText||'';
       let pos=Number.isFinite(Number(target.start_offset))?Number(target.start_offset):-1;
