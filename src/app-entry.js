@@ -1,4 +1,4 @@
-import { bootstrapOAuth } from './auth-oauth.js?v=20260918-5';
+import { bootstrapOAuth } from './auth-oauth.js';
 
 try {
   await bootstrapOAuth();
@@ -7,7 +7,7 @@ try {
 }
 
 await import('./main.js');
-await import('./auth-enhance.js?v=20260918-5');
-await import('./reading-entry-flow.js?v=20260918-5');
-await import('./reading-import-ui.js?v=20260918-5');
-await import('./reading-ai-ui.js?v=20260918-5');
+await import('./auth-enhance.js');
+await import('./reading-entry-flow.js');
+await import('./reading-import-ui.js');
+await import('./reading-ai-ui.js');
