@@ -656,33 +656,38 @@ function bindPrimaryTabSwipe() {
     if (animate) setTimeout(() => page.classList.remove('swipe-snap'), 220);
   };
 
-  root.addEventListener('pointerdown', (event) => {
-    if (event.pointerType !== 'touch' || primaryTabIndex() < 0) return;
-    if (event.target.closest('input, textarea, select, button, [contenteditable="true"], [data-swipe-ignore], .resource-passage-bookmarks-list')) return;
+  const ignoredTarget = (target) =>
+    target.closest('input, textarea, select, button, [contenteditable="true"], [data-swipe-ignore], .resource-passage-bookmarks-list');
+
+  root.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1 || primaryTabIndex() < 0 || ignoredTarget(event.target)) return;
     const page = event.target.closest('.page');
     if (!page) return;
-    gesture = { id: event.pointerId, page, x: event.clientX, y: event.clientY, dx: 0, mode: null };
+    const touch = event.touches[0];
+    gesture = { page, x: touch.clientX, y: touch.clientY, dx: 0, mode: null };
   }, { passive: true });
 
-  root.addEventListener('pointermove', (event) => {
-    if (!gesture || event.pointerId !== gesture.id) return;
-    const dx = event.clientX - gesture.x;
-    const dy = event.clientY - gesture.y;
+  root.addEventListener('touchmove', (event) => {
+    if (!gesture || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - gesture.x;
+    const dy = touch.clientY - gesture.y;
     if (!gesture.mode && Math.max(Math.abs(dx), Math.abs(dy)) >= intentDistance) {
       gesture.mode = Math.abs(dx) > Math.abs(dy) * 1.25 ? 'horizontal' : 'vertical';
     }
     if (gesture.mode !== 'horizontal') return;
     gesture.dx = dx;
+    event.preventDefault();
     const index = primaryTabIndex();
     const blocked = (dx > 0 && index === 0) || (dx < 0 && index === PRIMARY_TABS.length - 1);
     const visualDx = blocked ? dx * 0.18 : dx * 0.55;
     gesture.page.classList.add('swipe-dragging');
     gesture.page.style.transform = `translateX(${visualDx}px)`;
     gesture.page.style.opacity = String(Math.max(0.82, 1 - Math.abs(visualDx) / 900));
-  }, { passive: true });
+  }, { passive: false });
 
-  const finish = (event) => {
-    if (!gesture || event.pointerId !== gesture.id) return;
+  const finish = () => {
+    if (!gesture) return;
     const current = gesture;
     gesture = null;
     current.page.classList.remove('swipe-dragging');
@@ -696,8 +701,7 @@ function bindPrimaryTabSwipe() {
       reset(current.page);
       return;
     }
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
       navigate(PRIMARY_TABS[nextIndex].path);
       return;
     }
@@ -707,16 +711,15 @@ function bindPrimaryTabSwipe() {
     setTimeout(() => navigate(PRIMARY_TABS[nextIndex].path), 180);
   };
 
-  root.addEventListener('pointerup', finish, { passive: true });
-  root.addEventListener('pointercancel', (event) => {
-    if (!gesture || event.pointerId !== gesture.id) return;
+  root.addEventListener('touchend', finish, { passive: true });
+  root.addEventListener('touchcancel', () => {
+    if (!gesture) return;
     const current = gesture;
     gesture = null;
     current.page.classList.remove('swipe-dragging');
     reset(current.page);
   }, { passive: true });
 }
-
 bindPrimaryTabSwipe();
 window.addEventListener('popstate', render);
 supabase.auth.onAuthStateChange((_event, session) => {
