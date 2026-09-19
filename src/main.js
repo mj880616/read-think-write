@@ -375,11 +375,8 @@ async function resourceDetailView(id) {
   bindRelationToggles(relationMap);
   const targetNoteId = new URLSearchParams(location.search).get('note');
   if (targetNoteId) {
-    const target = document.querySelector(`[data-note-record="${CSS.escape(targetNoteId)}"]`);
-    if (target) {
-      target.open = true;
-      requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-    }
+    const target = document.querySelector(`[data-note-item="${CSS.escape(targetNoteId)}"]`);
+    if (target) requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }));
   }
   const topButton=document.querySelector('#back-to-top');
   const syncTopButton=()=>{if(topButton)topButton.classList.toggle('visible',window.scrollY>500);};
@@ -396,14 +393,6 @@ async function resourceDetailView(id) {
   document.addEventListener('selectionchange',()=>scheduleSelectionCapture(350));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSelectionCapture(200);});
   document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();resourceDetailView(id);});
-  const targetNoteId = new URLSearchParams(location.search).get('note');
-  if (targetNoteId) {
-    const targetNote = notes.find((note) => String(note.id) === targetNoteId);
-    if (targetNote) {
-      const targetItem = document.querySelector(`[data-note-item="${CSS.escape(targetNoteId)}"]`);
-      if (targetItem) requestAnimationFrame(() => targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-    }
-  }
   const bookmarkId=new URLSearchParams(location.search).get('bookmark');
   if(bookmarkId){
     const target=state.bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage'&&String(b.resource_id)===String(id));
