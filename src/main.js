@@ -58,8 +58,6 @@ ${PRIMARY_TABS.map(tab => routeLink(tab.label, tab.path, active === tab.key)).jo
       </nav>
       <div class="userbar">
         <span>${esc(user?.email || '')}</span>
-        <button class="btn secondary small" id="logout">로그아웃</button>
-        <button class="account-delete-link" id="delete-account" type="button">계정 삭제</button>
       </div>
     </header>
     <main class="page">${content}</main>
@@ -73,24 +71,7 @@ function bindCommon() {
       navigate(anchor.dataset.nav);
     });
   });
-  document.querySelector('#logout')?.addEventListener('click', async () => {
-    await api.signOut();
-    user = null;
-    render();
-  });
-  document.querySelector('#delete-account')?.addEventListener('click', async () => {
-    const first = confirm('계정을 삭제하면 저장한 글, 메모, 질문, 주제, 책갈피가 모두 영구 삭제됩니다. 계속할까요?');
-    if (!first) return;
-    const confirmation = prompt('삭제를 확인하려면 삭제라고 입력하세요.');
-    if (confirmation !== '삭제') return;
-    try {
-      await api.deleteAccount();
-      user = null;
-      location.reload();
-    } catch (error) {
-      alert(error.message);
-    }
-  });
+
 }
 
 async function refreshState() {
