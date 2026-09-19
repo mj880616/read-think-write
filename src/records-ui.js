@@ -415,6 +415,10 @@ window.addEventListener('popstate', () => {
   else setTimeout(scheduleEnhance, 0);
 });
 
+window.addEventListener('rtw:navigate-records', () => {
+  if (isRecordsRoute()) renderRecordsRoute();
+});
+
 supabase.auth.onAuthStateChange((_event, session) => {
   authEventSeen = true;
   setAuthUser(session?.user?.id ?? null);
