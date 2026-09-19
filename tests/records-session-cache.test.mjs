@@ -16,19 +16,28 @@ function record(id, title) {
   };
 }
 
-function createHarness({ holdARecords = false } = {}) {
+function createHarness({ holdARecords = false, holdInitialSession = false, initialUserId = null } = {}) {
   const rows = {
     [A_ID]: { records: [record(A_ID, 'A private record')], context: { owner_id: A_ID, profile_md: 'A private context', updated_at: '2026-09-19T00:00:00Z' } },
     [B_ID]: { records: [record(B_ID, 'B private record')], context: { owner_id: B_ID, profile_md: 'B private context', updated_at: '2026-09-19T00:00:00Z' } }
   };
   const reads = [];
   const listeners = [];
-  let user = null;
+  const authCalls = { getUser: 0, getSession: 0 };
+  const microtasks = [];
+  let user = initialUserId ? { id: initialUserId } : null;
   let releaseARecords = null;
+  let releaseInitialSession = null;
 
   const supabase = {
     auth: {
-      async getUser() { return { data: { user }, error: null }; },
+      async getUser() { authCalls.getUser++; return { data: { user }, error: null }; },
+      getSession() {
+        authCalls.getSession++;
+        const result = { data: { session: user ? { user } : null }, error: null };
+        if (holdInitialSession) return new Promise((resolve) => { releaseInitialSession = () => resolve(result); });
+        return Promise.resolve(result);
+      },
       onAuthStateChange(callback) { listeners.push(callback); }
     },
     from(table) {
@@ -98,20 +107,43 @@ function createHarness({ holdARecords = false } = {}) {
   const context = {
     supabase, APP_BASE: '/app/', document, location, MutationObserver,
     DOMPurify: { sanitize: (html) => html }, marked: { parse: (text) => text },
-    window: { addEventListener() {} }, queueMicrotask() {},
+    window: { addEventListener() {} }, queueMicrotask(callback) { microtasks.push(callback); },
     setTimeout, console
   };
   vm.runInNewContext(`${source}\nglobalThis.recordsTest = { renderRecordsRoute, listRecords, getWritingContext, enhanceHome, appendSearchRecords };`, context);
 
   return {
-    ...context.recordsTest, page, location, searchInput, searchResults, reads,
+    ...context.recordsTest, page, location, searchInput, searchResults, reads, authCalls,
+    get listenerCount() { return listeners.length; },
     get homeCard() { return homeCard; },
     signIn(id) { user = { id }; listeners.forEach((callback) => callback('SIGNED_IN', { user })); },
     signOut() { user = null; listeners.forEach((callback) => callback('SIGNED_OUT', null)); },
     setUserWithoutEvent(id) { user = id ? { id } : null; },
+    async flushEnhancements() {
+      while (microtasks.length) await microtasks.shift()();
+    },
+    get releaseInitialSession() { return releaseInitialSession; },
     get releaseARecords() { return releaseARecords; }
   };
 }
+
+test('one initial session check serves repeated same-user navigation without getUser calls', async () => {
+  const app = createHarness({ initialUserId: A_ID });
+  await app.renderRecordsRoute();
+  assert.match(app.page.innerHTML, /A private record/);
+  await app.renderRecordsRoute();
+  app.location.pathname = `/app/records/${A_ID}/`;
+  await app.renderRecordsRoute();
+  app.location.pathname = '/app/';
+  await app.enhanceHome();
+  app.location.pathname = '/app/search/';
+  app.searchInput.value = 'private record';
+  await app.appendSearchRecords();
+  assert.equal(app.authCalls.getUser, 0);
+  assert.equal(app.authCalls.getSession, 1);
+  assert.equal(app.listenerCount, 1);
+  assert.equal(app.reads.filter((read) => read.table === 'rtw_records' && read.owner === A_ID).length, 1);
+});
 
 test('records and writing context stay with the signed-in user and clear on logout', async () => {
   const app = createHarness();
@@ -182,14 +214,64 @@ test('home card and search results remove the previous user data on session chan
   assert.match(app.searchResults.innerHTML, /B private record/);
 });
 
-test('a changed user found without an auth event clears the old view and cache', async () => {
+test('a changed user clears the old view and cache when the auth event arrives', async () => {
   const app = createHarness();
   app.signIn(A_ID);
   await app.renderRecordsRoute();
   app.setUserWithoutEvent(B_ID);
+  assert.match((await app.listRecords())[0].title, /A private record/);
+  app.signIn(B_ID);
   assert.match((await app.listRecords())[0].title, /B private record/);
   assert.equal((await app.getWritingContext()).profile_md, 'B private context');
   assert.doesNotMatch(app.page.innerHTML, /A private record|A private context/);
+});
+
+test('a late initial session snapshot cannot overwrite a newer auth event', async () => {
+  const app = createHarness({ holdInitialSession: true, initialUserId: A_ID });
+  app.signIn(B_ID);
+  await app.renderRecordsRoute();
+  assert.match((await app.listRecords())[0].title, /B private record/);
+  assert.equal((await app.getWritingContext()).profile_md, 'B private context');
+  app.releaseInitialSession();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(app.page.innerHTML, /B private record/);
+  assert.doesNotMatch(app.page.innerHTML, /A private record|A private context/);
+  assert.match((await app.listRecords())[0].title, /B private record/);
+  assert.equal(app.authCalls.getSession, 1);
+  assert.equal(app.authCalls.getUser, 0);
+});
+
+test('auth event automatically replaces the old records page with the new user', async () => {
+  const app = createHarness();
+  app.signIn(A_ID);
+  await app.renderRecordsRoute();
+  await app.flushEnhancements();
+  assert.match(app.page.innerHTML, /A private record/);
+
+  app.signIn(B_ID);
+  assert.doesNotMatch(app.page.innerHTML, /A private record|A private context/);
+  await app.flushEnhancements();
+  assert.match(app.page.innerHTML, /B private record/);
+  assert.match(app.page.innerHTML, /B private context/);
+  assert.equal(app.reads.filter((read) => read.table === 'rtw_records' && read.owner === B_ID).length, 1);
+  assert.equal(app.authCalls.getSession, 1);
+  assert.equal(app.authCalls.getUser, 0);
+});
+
+test('logout event removes records and writing context without another auth lookup', async () => {
+  const app = createHarness();
+  app.signIn(A_ID);
+  await app.renderRecordsRoute();
+  await app.flushEnhancements();
+  const readsBeforeLogout = app.reads.length;
+
+  app.signOut();
+  assert.doesNotMatch(app.page.innerHTML, /A private record|A private context/);
+  assert.equal((await app.listRecords()).length, 0);
+  assert.equal(await app.getWritingContext(), null);
+  assert.equal(app.reads.length, readsBeforeLogout);
+  assert.equal(app.authCalls.getSession, 1);
+  assert.equal(app.authCalls.getUser, 0);
 });
 
 test('an old in-flight records response cannot replace the new user cache', async () => {

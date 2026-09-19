@@ -9,34 +9,34 @@ let rendering = false;
 let queued = false;
 let recordsCache = null;
 let contextCache = undefined;
-let cacheOwnerId = null;
 let cacheEpoch = 0;
+let authUserId = null;
+let authError = null;
+let authEventSeen = false;
+let resolveAuthReady;
+const authReady = new Promise((resolve) => { resolveAuthReady = resolve; });
 
-function resetCaches(ownerId = null) {
+function resetCaches() {
   recordsCache = null;
   contextCache = undefined;
-  cacheOwnerId = ownerId;
   cacheEpoch += 1;
 }
 
-async function currentCacheOwnerId() {
-  for (;;) {
-    const epoch = cacheEpoch;
-    const { data, error } = await supabase.auth.getUser();
-    if (epoch !== cacheEpoch) continue;
-    if (error && error.name !== 'AuthSessionMissingError') {
-      resetCaches();
-      clearRenderedRecords();
-      throw error;
-    }
-    const ownerId = data?.user?.id ?? null;
-    if (ownerId !== cacheOwnerId) {
-      resetCaches(ownerId);
-      clearRenderedRecords();
-      if (ownerId) scheduleEnhance();
-    }
-    return ownerId;
+function setAuthUser(ownerId) {
+  authError = null;
+  if (ownerId !== authUserId) {
+    authUserId = ownerId;
+    resetCaches();
+    clearRenderedRecords();
+    if (ownerId) scheduleEnhance();
   }
+  resolveAuthReady();
+}
+
+async function currentCacheOwnerId() {
+  await authReady;
+  if (authError) throw authError;
+  return authUserId;
 }
 
 function esc(value = '') {
@@ -416,12 +416,22 @@ window.addEventListener('popstate', () => {
 });
 
 supabase.auth.onAuthStateChange((_event, session) => {
-  const ownerId = session?.user?.id ?? null;
-  if (ownerId !== cacheOwnerId) {
-    resetCaches(ownerId);
-    clearRenderedRecords();
-    if (ownerId) scheduleEnhance();
+  authEventSeen = true;
+  setAuthUser(session?.user?.id ?? null);
+});
+
+supabase.auth.getSession().then(({ data, error }) => {
+  if (authEventSeen) return;
+  if (error) {
+    authError = error;
+    resolveAuthReady();
+    return;
   }
+  setAuthUser(data?.session?.user?.id ?? null);
+}).catch((error) => {
+  if (authEventSeen) return;
+  authError = error;
+  resolveAuthReady();
 });
 
 new MutationObserver(() => {
