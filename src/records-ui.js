@@ -203,8 +203,8 @@ async function recordsListView() {
   target.dataset.recordsRoute = 'list';
   target.innerHTML = `
     <section class="hero records-hero">
-      <div class="eyebrow">기록</div>
-      <h1>생각을 훈련의 흔적으로 남기기</h1>
+      <div class="eyebrow">쓰기</div>
+      <h1>글쓰기 훈련의 흔적들</h1>
       <p>글쓰기 훈련은 ChatGPT에서 진행하고, 완결된 A·B·C와 배운 원칙만 이곳에 쌓는다. 저장은 내가 요청했을 때만 이루어진다.</p>
     </section>
     <section class="records-layout">
