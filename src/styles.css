@@ -29,3 +29,5 @@
 @media(max-width:760px){.resource-passage-bookmarks{margin:6px auto 10px;padding:6px 4px}.resource-passage-bookmarks-title{font-size:10px}.resource-passage-bookmarks .passage-bookmark-link{max-width:170px}.back-to-top{right:12px;bottom:14px;width:34px;height:34px}}
 
 
+
+.note-item-head{display:flex;align-items:flex-start;gap:6px}.note-item-head>[data-note-display]{flex:1;min-width:0}.note-menu-button{flex:0 0 auto;border:0;background:transparent;padding:0 2px;color:var(--muted);font:inherit;font-size:14px;line-height:1;cursor:pointer}.note-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}.note-actions button{border:0;background:transparent;padding:1px 0;font:inherit;font-size:10px;color:var(--muted);cursor:pointer}.note-inline-edit{margin-top:6px}.note-inline-edit textarea{min-height:84px;width:100%}
