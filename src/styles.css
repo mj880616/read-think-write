@@ -36,4 +36,5 @@
 
 .note-record-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}.note-record-actions button{border:0;background:transparent;padding:1px 0;font:inherit;font-size:10px;color:var(--muted);cursor:pointer}
 
-.note-preview-memo{margin-top:4px;font-size:11px;line-height:1.5;color:var(--muted)}.note-item-link-expanded{white-space:pre-wrap;text-decoration:none!important;cursor:default}
+
+.note-item-link{display:block;font-size:14px;font-weight:400;line-height:1.55;color:var(--ink);text-decoration:none}.note-item-link:hover{text-decoration:none}.note-quote-preview,.note-quote-full{display:block;color:var(--muted);font-size:13px;font-weight:400;line-height:1.5;border-left:2px solid var(--line);padding-left:9px}.note-quote-preview{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.note-memo-preview,.note-memo-full{display:block;color:var(--ink);font-size:14px;font-weight:400;line-height:1.55}.note-quote-preview+.note-memo-preview,.note-quote-full+.note-memo-full{margin-top:7px}.note-item-link-expanded{white-space:normal;cursor:default}.note-item .meta{font-size:10px;color:var(--muted);margin-top:5px}
