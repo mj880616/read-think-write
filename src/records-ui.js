@@ -209,7 +209,7 @@ async function recordsListView() {
     </section>
     <section class="records-layout">
       <div class="card records-index">
-        <div class="records-card-head"><div><h2>기록</h2><p class="muted">원문과 피드백, 수정안을 한 묶음으로 다시 본다.</p></div><span class="records-count">${records.length}</span></div>
+        <div class="records-card-head"><div><h2>쓰기</h2><p class="muted">원문과 피드백, 수정안을 한 묶음으로 다시 본다.</p></div><span class="records-count">${records.length}</span></div>
         <div class="records-list">${records.map(recordIndexItem).join('') || '<div class="empty">아직 기록이 없음</div>'}</div>
       </div>
       <div class="card writing-context-card">
