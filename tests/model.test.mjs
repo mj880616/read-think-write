@@ -38,6 +38,8 @@ assert.match(mainSource,/data-note-target/,'note summaries link to their full no
 assert.match(mainSource,/targetNoteId[\s\S]*scrollIntoView/,'linked notes open and scroll into view');
 assert.match(mainSource,/data-note-resource/,'note links retain their source resource');
 assert.match(mainSource,/resourceId[\s\S]*resourceDetailView\(resourceId\)/,'resource-linked notes route to their article');
+assert.match(mainSource,/note-preview-memo/,'quoted notes expose the added memo separately');
+assert.match(mainSource,/display\.textContent = note\.body/,'opened notes reveal their full saved body');
 assert.match(mainSource,/function homeView\(\)[\s\S]*?bindCommon\(\);[\s\S]*?bindResourceBookmarkButtons\(\);/,'home resource stars use the shared bookmark toggle binding');
 assert.match(entryFlowSource,/id="home-quick-add"/); assert.match(entryFlowSource,/\?new=1/); assert.match(entryFlowSource,/\+ 새 자료/); assert.match(importUiSource,/URLSearchParams/); assert.match(importUiSource,/requestSubmit/); assert.match(appEntrySource,/reading-entry-flow\.js/);
 
