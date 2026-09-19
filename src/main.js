@@ -166,15 +166,31 @@ function bindNoteActions() {
     if (!body) return;
     await api.updateNote(form.dataset.noteEditForm, body);
     await refreshState();
-    render();
+    await rerenderCurrentView();
   }));
   document.querySelectorAll('[data-note-delete]').forEach((button) => button.addEventListener('click', async () => {
     if (!confirm('이 메모를 삭제할까요?')) return;
     await api.deleteNote(button.dataset.noteDelete);
     await refreshState();
-    render();
+    await rerenderCurrentView();
   }));
 }
+async function rerenderCurrentView() {
+  const path = pathFromLocation();
+  if (path === '/' || path === '') return homeView();
+  if (path === '/notes/' || path === '/notes') return notesView();
+  if (path === '/search/' || path === '/search') return searchView();
+  const resource = path.match(/^\/read\/([0-9a-f-]+)\/?$/);
+  if (resource) return resourceDetailView(resource[1]);
+  const topic = path.match(/^\/topics\/([0-9a-f-]+)\/?$/);
+  if (topic) return topicDetailView(topic[1]);
+  const question = path.match(/^\/questions\/([0-9a-f-]+)\/?$/);
+  if (question) return questionDetailView(question[1]);
+  const archive = path.match(/^\/archive\/(\d{4})\/?$/);
+  if (archive) return archiveView(archive[1]);
+  return render();
+}
+
 
 function topicLink(topic) {
   return `<a class="tag" href="${href(`/topics/${topic.id}/`)}" data-nav="/topics/${topic.id}/">${esc(topic.name)}</a>`;
