@@ -503,19 +503,19 @@ async function notesView() {
   const relationMap = new Map(relationPairs.map(([noteId, relations]) => [`note:${noteId}`, relations]));
 
   root.innerHTML = shell(`
-    <section class="hero"><div class="eyebrow">생각</div><h1>독립 메모</h1><p>어떤 글에 딸리지 않은 생각도 바로 기록하고, 이후 주제와 질문에 연결한다.</p></section>
+    <section class="hero"><div class="eyebrow">생각</div><h1>메모</h1><p>기록하고, 연결한다.</p></section>
     <div class="notes-layout">
       <section class="card">
         <h2>새 메모</h2>
         <form id="independent-note-form" class="form">
           <div class="field"><textarea name="body" required placeholder="지금 떠오른 생각을 그대로…"></textarea></div>
-          <div class="field"><label>성격 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
+          <div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
           <button class="btn">저장</button><div id="ind-note-status" class="status"></div>
         </form>
         <div class="note-type-manager">
           <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button">유형 관리</button>
           <div id="note-type-manager-panel" hidden>
-            <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 성격"><button class="btn secondary small" type="submit">추가</button></form>
+            <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 유형"><button class="btn secondary small" type="submit">추가</button></form>
             <div class="note-type-list">${state.noteTypes.map((item)=>`<span>${esc(item.name)} <button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">×</button></span>`).join('') || '<span class="muted">추가한 성격 없음</span>'}</div>
           </div>
         </div>
