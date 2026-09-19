@@ -132,9 +132,16 @@ function bindResourceBookmarkButtons(){document.querySelectorAll('[data-resource
 function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const items=state.bookmarks.map(b=>({b,r:rm.get(b.resource_id)})).filter(x=>x.r);root.innerHTML=shell(`<section class="hero bookmark-hero"><div class="eyebrow">책갈피</div><h1>다시 볼 곳</h1><p>다시 보고 싶은 글과 문장을 한곳에서 찾는다.</p></section><section class="card bookmark-section bookmark-unified"><div class="bookmark-index">${items.map(({b,r})=>b.bookmark_type==='resource'?`<div class="bookmark-index-row"><a class="bookmark-index-main" href="${href('/read/'+r.id+'/')}" data-nav="/read/${r.id}/"><span class="bookmark-kind">글</span><span class="bookmark-index-title">${esc(r.author||r.source_name||'')}${(r.author||r.source_name)?' · ':''}${esc(r.title)}</span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`:`<div class="bookmark-index-row"><a class="bookmark-index-main bookmark-index-passage" href="${href('/read/'+b.resource_id+'/?bookmark='+encodeURIComponent(b.id))}" data-passage-bookmark="${b.id}"><span class="bookmark-kind">문장</span><span class="bookmark-index-copy"><strong class="bookmark-index-context">${esc(r.title)}</strong><span class="bookmark-index-text">“${esc(b.selected_text||'')}”</span></span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`).join('')||empty('아직 책갈피가 없음')}</div></section>`,'bookmarks');bindCommon();document.querySelectorAll('[data-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);render();}));document.querySelectorAll('[data-delete-bookmark]').forEach(x=>x.addEventListener('click',async()=>{await api.deleteBookmark(x.dataset.deleteBookmark);await refreshState();bookmarkView();}));}
 
 function noteItem(note) {
-  const text = esc(note.body).replace(/\n/g, ' ');
+  const plain = String(note.body || '');
+  const quoted = plain.startsWith('> ');
+  const parts = quoted ? plain.split(/\n\n/, 2) : [];
+  const quoteText = quoted ? parts[0].replace(/^> ?/gm, '') : '';
+  const memoText = quoted ? plain.slice(parts[0].length).replace(/^\n+/, '') : '';
+  const previewSource = quoted ? quoteText : plain;
+  const preview = esc(previewSource).replace(/\n/g, ' ');
   return `<div class="item note-item" data-note-item="${note.id}">
-    <div class="note-item-head"><a class="note-item-link" data-note-display href="${note.resource_id ? href('/read/' + note.resource_id + '/?note=' + encodeURIComponent(note.id)) : href('/notes/?note=' + encodeURIComponent(note.id))}" data-note-target="${note.id}" data-note-resource="${note.resource_id || ''}">${text.slice(0, 150)}${text.length > 150 ? '…' : ''}</a><button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button></div>
+    <div class="note-item-head"><a class="note-item-link" data-note-display href="${note.resource_id ? href('/read/' + note.resource_id + '/?note=' + encodeURIComponent(note.id)) : href('/notes/?note=' + encodeURIComponent(note.id))}" data-note-target="${note.id}" data-note-resource="${note.resource_id || ''}">${preview.slice(0, 150)}${preview.length > 150 ? '…' : ''}</a><button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button></div>
+    ${quoted && memoText ? `<div class="note-preview-memo">${esc(memoText).replace(/\n/g, '<br>')}</div>` : ''}
     <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
     <div class="note-actions" data-note-actions="${note.id}" hidden><button type="button" data-note-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
     <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div></form>
@@ -376,7 +383,15 @@ async function resourceDetailView(id) {
   const targetNoteId = new URLSearchParams(location.search).get('note');
   if (targetNoteId) {
     const target = document.querySelector(`[data-note-item="${CSS.escape(targetNoteId)}"]`);
-    if (target) requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    if (target) {
+      const display = target.querySelector('[data-note-display]');
+      const note = notes.find((item) => String(item.id) === targetNoteId);
+      if (display && note) {
+        display.textContent = note.body;
+        display.classList.add('note-item-link-expanded');
+      }
+      requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    }
   }
   const topButton=document.querySelector('#back-to-top');
   const syncTopButton=()=>{if(topButton)topButton.classList.toggle('visible',window.scrollY>500);};
