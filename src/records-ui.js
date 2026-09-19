@@ -9,6 +9,35 @@ let rendering = false;
 let queued = false;
 let recordsCache = null;
 let contextCache = undefined;
+let cacheOwnerId = null;
+let cacheEpoch = 0;
+
+function resetCaches(ownerId = null) {
+  recordsCache = null;
+  contextCache = undefined;
+  cacheOwnerId = ownerId;
+  cacheEpoch += 1;
+}
+
+async function currentCacheOwnerId() {
+  for (;;) {
+    const epoch = cacheEpoch;
+    const { data, error } = await supabase.auth.getUser();
+    if (epoch !== cacheEpoch) continue;
+    if (error && error.name !== 'AuthSessionMissingError') {
+      resetCaches();
+      clearRenderedRecords();
+      throw error;
+    }
+    const ownerId = data?.user?.id ?? null;
+    if (ownerId !== cacheOwnerId) {
+      resetCaches(ownerId);
+      clearRenderedRecords();
+      if (ownerId) scheduleEnhance();
+    }
+    return ownerId;
+  }
+}
 
 function esc(value = '') {
   return String(value).replace(/[&<>'"]/g, (char) => ({
@@ -56,22 +85,30 @@ function formatDate(value) {
 }
 
 async function listRecords(force = false) {
+  const ownerId = await currentCacheOwnerId();
+  if (!ownerId) return [];
   if (recordsCache && !force) return recordsCache;
+  const epoch = cacheEpoch;
   const { data, error } = await supabase
     .from('rtw_records')
     .select('*')
     .order('updated_at', { ascending: false });
+  if (await currentCacheOwnerId() !== ownerId || cacheEpoch !== epoch) return listRecords(force);
   if (error) throw error;
   recordsCache = data ?? [];
   return recordsCache;
 }
 
 async function getWritingContext(force = false) {
+  const ownerId = await currentCacheOwnerId();
+  if (!ownerId) return null;
   if (contextCache !== undefined && !force) return contextCache;
+  const epoch = cacheEpoch;
   const { data, error } = await supabase
     .from('rtw_writing_context')
     .select('*')
     .maybeSingle();
+  if (await currentCacheOwnerId() !== ownerId || cacheEpoch !== epoch) return getWritingContext(force);
   if (error) throw error;
   contextCache = data ?? null;
   return contextCache;
@@ -143,10 +180,26 @@ function page() {
   return root?.querySelector('.page');
 }
 
+function clearRenderedRecords() {
+  root?.querySelector('#recent-records-card')?.remove();
+  root?.querySelector('[data-record-search-results]')?.remove();
+  if (isRecordsRoute()) {
+    const target = page();
+    if (target?.dataset.recordsRoute) {
+      target.innerHTML = '';
+      delete target.dataset.recordsRoute;
+    }
+  }
+}
+
 async function recordsListView() {
   const target = page();
   if (!target) return;
+  const ownerId = await currentCacheOwnerId();
+  if (!ownerId) return;
+  const epoch = cacheEpoch;
   const [records, context] = await Promise.all([listRecords(), getWritingContext()]);
+  if (await currentCacheOwnerId() !== ownerId || cacheEpoch !== epoch) return recordsListView();
   target.dataset.recordsRoute = 'list';
   target.innerHTML = `
     <section class="hero records-hero">
@@ -180,7 +233,11 @@ function recordSection(letter, title, body, className = '') {
 async function recordDetailView(id) {
   const target = page();
   if (!target) return;
+  const ownerId = await currentCacheOwnerId();
+  if (!ownerId) return;
+  const epoch = cacheEpoch;
   const records = await listRecords();
+  if (await currentCacheOwnerId() !== ownerId || cacheEpoch !== epoch) return recordDetailView(id);
   const record = records.find((item) => item.id === id);
   if (!record) {
     target.innerHTML = '<section class="hero"><h1>기록을 찾을 수 없음</h1><a class="btn secondary" href="' + href(RECORDS_PATH) + '" data-records-nav="' + RECORDS_PATH + '">기록으로</a></section>';
@@ -282,7 +339,11 @@ async function enhanceHome() {
   const grid = root?.querySelector('.page .grid');
   if (!grid || root.querySelector('#recent-records-card')) return;
   try {
+    const ownerId = await currentCacheOwnerId();
+    if (!ownerId) return;
+    const epoch = cacheEpoch;
     const records = (await listRecords()).slice(0, 3);
+    if (await currentCacheOwnerId() !== ownerId || cacheEpoch !== epoch) return enhanceHome();
     const card = document.createElement('div');
     card.className = 'card';
     card.id = 'recent-records-card';
@@ -301,10 +362,14 @@ async function appendSearchRecords() {
   const query = input.value.trim().toLocaleLowerCase('ko-KR');
   if (!query) return;
   try {
+    const ownerId = await currentCacheOwnerId();
+    if (!ownerId) return;
+    const epoch = cacheEpoch;
     const records = (await listRecords()).filter((record) => [
       record.title, record.a_original, record.b_feedback, record.c_revision,
       record.takeaway, ...(record.tags || [])
     ].some((value) => String(value || '').toLocaleLowerCase('ko-KR').includes(query)));
+    if (await currentCacheOwnerId() !== ownerId || cacheEpoch !== epoch) return appendSearchRecords();
     output.insertAdjacentHTML('beforeend', `<section class="result-section card" data-record-search-results><h2>기록 ${records.length}</h2><div class="records-list">${records.map(recordIndexItem).join('') || '<div class="empty">없음</div>'}</div></section>`);
   } catch {}
 }
@@ -348,6 +413,15 @@ root?.addEventListener('click', (event) => {
 window.addEventListener('popstate', () => {
   if (isRecordsRoute()) setTimeout(renderRecordsRoute, 0);
   else setTimeout(scheduleEnhance, 0);
+});
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  const ownerId = session?.user?.id ?? null;
+  if (ownerId !== cacheOwnerId) {
+    resetCaches(ownerId);
+    clearRenderedRecords();
+    if (ownerId) scheduleEnhance();
+  }
 });
 
 new MutationObserver(() => {
