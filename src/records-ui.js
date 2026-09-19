@@ -356,5 +356,8 @@ window.addEventListener('popstate', () => {
   else setTimeout(scheduleEnhance, 0);
 });
 
-new MutationObserver(() => {\n  if (isRecordsRoute() && page()?.dataset.recordsRoute) return;\n  scheduleEnhance();\n}).observe(root, { childList: true, subtree: true });
+new MutationObserver(() => {
+  if (isRecordsRoute() && page()?.dataset.recordsRoute) return;
+  scheduleEnhance();
+}).observe(root, { childList: true, subtree: true });
 scheduleEnhance();
