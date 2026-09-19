@@ -493,7 +493,7 @@ async function notesView() {
   const relationMap = new Map(relationPairs.map(([noteId, relations]) => [`note:${noteId}`, relations]));
 
   root.innerHTML = shell(`
-    <section class="hero"><div class="eyebrow">생각</div><h1>독립 메모</h1><p>어떤 글에 딸리지 않은 생각도 바로 기록하고, 이후 주제와 질문에 연결한다.</p></section>
+    <section class="hero"><div class="eyebrow">생각</div><h1>메모</h1><p>기록하고, 연결한다.</p></section>
     <div class="notes-layout">
       <section class="card">
         <h2>새 메모</h2>
