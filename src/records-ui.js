@@ -10,12 +10,6 @@ let queued = false;
 let recordsCache = null;
 let contextCache = undefined;
 
-const css = document.createElement('link');
-css.rel = 'stylesheet';
-css.href = new URL('./records.css', import.meta.url).href;
-css.dataset.recordsStyles = 'true';
-if (!document.querySelector('link[data-records-styles]')) document.head.appendChild(css);
-
 function esc(value = '') {
   return String(value).replace(/[&<>'"]/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
