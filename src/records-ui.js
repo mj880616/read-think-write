@@ -419,6 +419,13 @@ window.addEventListener('rtw:navigate-records', () => {
   if (isRecordsRoute()) renderRecordsRoute();
 });
 
+window.addEventListener('rtw:leave-records', () => {
+  if (!isRecordsRoute()) {
+    clearRenderedRecords();
+    setRecordsActive(false);
+  }
+});
+
 supabase.auth.onAuthStateChange((_event, session) => {
   authEventSeen = true;
   setAuthUser(session?.user?.id ?? null);
