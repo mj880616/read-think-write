@@ -134,7 +134,7 @@ function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const
 function noteItem(note) {
   const text = esc(note.body).replace(/\n/g, ' ');
   return `<div class="item note-item" data-note-item="${note.id}">
-    <div class="note-item-head"><div data-note-display>${text.slice(0, 150)}${text.length > 150 ? '…' : ''}</div><button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button></div>
+    <div class="note-item-head"><a class="note-item-link" data-note-display href="${href('/notes/?note='+encodeURIComponent(note.id))}" data-note-target="${note.id}">${text.slice(0, 150)}${text.length > 150 ? '…' : ''}</a><button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button></div>
     <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
     <div class="note-actions" data-note-actions="${note.id}" hidden><button type="button" data-note-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
     <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div></form>
@@ -142,6 +142,12 @@ function noteItem(note) {
 }
 
 function bindNoteActions() {
+  document.querySelectorAll('[data-note-target]').forEach((link) => link.addEventListener('click', (event) => {
+    event.preventDefault();
+    const id = link.dataset.noteTarget;
+    history.pushState({}, '', href('/notes/?note='+encodeURIComponent(id)));
+    notesView();
+  }));
   document.querySelectorAll('[data-note-menu]').forEach((button) => button.addEventListener('click', () => {
     const actions = document.querySelector(`[data-note-actions="${button.dataset.noteMenu}"]`);
     if (actions) actions.hidden = !actions.hidden;
@@ -361,6 +367,14 @@ async function resourceDetailView(id) {
   bindCommon();
   bindNoteActions();
   bindRelationToggles(relationMap);
+  const targetNoteId = new URLSearchParams(location.search).get('note');
+  if (targetNoteId) {
+    const target = document.querySelector(`[data-note-record="${CSS.escape(targetNoteId)}"]`);
+    if (target) {
+      target.open = true;
+      requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    }
+  }
   const topButton=document.querySelector('#back-to-top');
   const syncTopButton=()=>{if(topButton)topButton.classList.toggle('visible',window.scrollY>500);};
   topButton?.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
@@ -451,7 +465,7 @@ async function notesView() {
         <h2>메모</h2>
         ${independent.map((note) => {
           const relations = relationMap.get(`note:${note.id}`) ?? [];
-          return `<details class="note-record"><summary>${esc(note.body).slice(0, 90)}${note.body.length > 90 ? '…' : ''}</summary>
+          return `<details class="note-record" data-note-record="${note.id}"><summary>${esc(note.body).slice(0, 90)}${note.body.length > 90 ? '…' : ''}</summary>
             <div class="note-body">${esc(note.body).replace(/\n/g, '<br>')}</div>
             <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleString('ko-KR')}</div>
             <div class="note-links"><h3>이 메모 연결하기</h3>${relationManager('note', note.id, relations)}</div>
