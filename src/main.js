@@ -133,10 +133,47 @@ function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const
 
 function noteItem(note) {
   const text = esc(note.body).replace(/\n/g, ' ');
-  return `<div class="item">
-    <div>${text.slice(0, 150)}${text.length > 150 ? '…' : ''}</div>
+  return `<div class="item note-item" data-note-item="${note.id}">
+    <div class="note-item-head"><div data-note-display>${text.slice(0, 150)}${text.length > 150 ? '…' : ''}</div><button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button></div>
     <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
+    <div class="note-actions" data-note-actions="${note.id}" hidden><button type="button" data-note-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
+    <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div></form>
   </div>`;
+}
+
+function bindNoteActions() {
+  document.querySelectorAll('[data-note-menu]').forEach((button) => button.addEventListener('click', () => {
+    const actions = document.querySelector(`[data-note-actions="${button.dataset.noteMenu}"]`);
+    if (actions) actions.hidden = !actions.hidden;
+  }));
+  document.querySelectorAll('[data-note-edit]').forEach((button) => button.addEventListener('click', () => {
+    const item = button.closest('[data-note-item]');
+    item?.querySelector('[data-note-display]')?.setAttribute('hidden', '');
+    const form = item?.querySelector('[data-note-edit-form]');
+    if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); }
+    const actions = item?.querySelector('[data-note-actions]');
+    if (actions) actions.hidden = true;
+  }));
+  document.querySelectorAll('[data-note-edit-cancel]').forEach((button) => button.addEventListener('click', () => {
+    const item = button.closest('[data-note-item]');
+    item?.querySelector('[data-note-display]')?.removeAttribute('hidden');
+    const form = item?.querySelector('[data-note-edit-form]');
+    if (form) form.hidden = true;
+  }));
+  document.querySelectorAll('[data-note-edit-form]').forEach((form) => form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const body = form.querySelector('textarea')?.value.trim() || '';
+    if (!body) return;
+    await api.updateNote(form.dataset.noteEditForm, body);
+    await refreshState();
+    render();
+  }));
+  document.querySelectorAll('[data-note-delete]').forEach((button) => button.addEventListener('click', async () => {
+    if (!confirm('이 메모를 삭제할까요?')) return;
+    await api.deleteNote(button.dataset.noteDelete);
+    await refreshState();
+    render();
+  }));
 }
 
 function topicLink(topic) {
@@ -170,6 +207,7 @@ function homeView() {
     </section>
   `, 'home');
   bindCommon();
+  bindNoteActions();
   bindResourceBookmarkButtons();
 
 }
@@ -195,6 +233,7 @@ function readListView() {
     </div>
   `, 'read');
   bindCommon();
+  bindNoteActions();
   bindResourceBookmarkButtons();
 
   document.querySelector('#resource-form').addEventListener('submit', async (event) => {
@@ -304,6 +343,7 @@ async function resourceDetailView(id) {
     <section class="article-note card"><h2>연결</h2>${relationManager('resource', id, relations)}</section>
   `, 'read');
   bindCommon();
+  bindNoteActions();
   bindRelationToggles(relationMap);
   const topButton=document.querySelector('#back-to-top');
   const syncTopButton=()=>{if(topButton)topButton.classList.toggle('visible',window.scrollY>500);};
@@ -405,6 +445,7 @@ async function notesView() {
     </div>
   `, 'notes');
   bindCommon();
+  bindNoteActions();
   bindRelationToggles(relationMap);
 
   document.querySelector('#independent-note-form').addEventListener('submit', async (event) => {
@@ -432,6 +473,7 @@ function topicsView() {
     </div>
   `, 'topics');
   bindCommon();
+  bindNoteActions();
   document.querySelector('#topic-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const status = document.querySelector('#topic-status');
@@ -455,6 +497,7 @@ function questionsView() {
     </div>
   `, 'questions');
   bindCommon();
+  bindNoteActions();
   document.querySelector('#question-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const status = document.querySelector('#question-status');
@@ -490,6 +533,7 @@ async function topicDetailView(id) {
     </div>
   `, 'topics');
   bindCommon();
+  bindNoteActions();
 }
 
 async function questionDetailView(id) {
@@ -505,6 +549,7 @@ async function questionDetailView(id) {
     </div>
   `, 'questions');
   bindCommon();
+  bindNoteActions();
 }
 
 async function archiveView(year = '2026') {
@@ -540,6 +585,7 @@ async function archiveView(year = '2026') {
     <section class="archive">${monthHtml || empty(`${year}년 기록이 아직 없음`)}</section>
   `, 'archive');
   bindCommon();
+  bindNoteActions();
 
   document.querySelectorAll('.archive-note-form').forEach((form) => {
     form.addEventListener('submit', async (event) => {
@@ -566,6 +612,7 @@ function searchView() {
     <div id="search-results"></div>
   `, 'search');
   bindCommon();
+  bindNoteActions();
 
   const input = document.querySelector('#search-input');
   const output = document.querySelector('#search-results');
@@ -585,6 +632,7 @@ function searchView() {
       <section class="result-section card"><h2>주제 ${topics.length}</h2><div class="tagrow">${topics.map(topicLink).join('') || empty('없음')}</div></section>
       <section class="result-section card"><h2>질문 ${questions.length}</h2>${questions.map((question) => `<div class="item">${questionLink(question)}</div>`).join('') || empty('없음')}</section>`;
     bindCommon();
+  bindNoteActions();
   };
   input.addEventListener('input', draw);
   draw();
@@ -593,6 +641,7 @@ function searchView() {
 function notFound() {
   root.innerHTML = shell(`<section class="hero"><h1>페이지를 찾을 수 없음</h1><button class="btn" id="go-home">홈으로</button></section>`);
   bindCommon();
+  bindNoteActions();
   document.querySelector('#go-home').onclick = () => navigate('/');
 }
 
