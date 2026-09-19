@@ -29,6 +29,9 @@ const mainSource=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
 assert.match(mainSource,/원문·정보 수정/,'resource detail exposes edit action');
 assert.match(mainSource,/id="resource-edit-form"/,'resource detail has edit form');
 assert.match(mainSource,/api\.updateResource\(id, form\)/,'resource edits are persisted');
+assert.match(mainSource,/function bindNoteActions\(\)/,'note actions share one event binder');
+assert.match(mainSource,/api\.updateNote\(/,'notes can be edited');
+assert.match(mainSource,/api\.deleteNote\(/,'notes can be deleted');
 assert.match(mainSource,/function homeView\(\)[\s\S]*?bindCommon\(\);\s*bindResourceBookmarkButtons\(\);/,'home resource stars use the shared bookmark toggle binding');
 assert.match(entryFlowSource,/id="home-quick-add"/); assert.match(entryFlowSource,/\?new=1/); assert.match(entryFlowSource,/\+ 새 자료/); assert.match(importUiSource,/URLSearchParams/); assert.match(importUiSource,/requestSubmit/); assert.match(appEntrySource,/reading-entry-flow\.js/);
 
