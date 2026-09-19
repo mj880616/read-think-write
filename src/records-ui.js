@@ -146,7 +146,7 @@ function ensureRecordsNav() {
   const link = document.createElement('a');
   link.href = href(RECORDS_PATH);
   link.dataset.recordsNav = RECORDS_PATH;
-  link.textContent = '기록';
+  link.textContent = '쓰기';
   const notesLink = [...nav.querySelectorAll('a')].find((a) => a.getAttribute('href')?.endsWith('/notes/'));
   if (notesLink?.nextSibling) nav.insertBefore(link, notesLink.nextSibling);
   else nav.appendChild(link);
