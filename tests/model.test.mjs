@@ -32,6 +32,8 @@ assert.match(mainSource,/api\.updateResource\(id, form\)/,'resource edits are pe
 assert.match(mainSource,/function bindNoteActions\(\)/,'note actions share one event binder');
 assert.match(mainSource,/api\.updateNote\(/,'notes can be edited');
 assert.match(mainSource,/api\.deleteNote\(/,'notes can be deleted');
+assert.match(mainSource,/data-note-record-edit/,'full note records expose edit controls');
+assert.match(mainSource,/data-note-delete/,'note records expose delete controls');
 assert.match(mainSource,/data-note-target/,'note summaries link to their full note record');
 assert.match(mainSource,/targetNoteId[\s\S]*scrollIntoView/,'linked notes open and scroll into view');
 assert.match(mainSource,/function homeView\(\)[\s\S]*?bindCommon\(\);[\s\S]*?bindResourceBookmarkButtons\(\);/,'home resource stars use the shared bookmark toggle binding');
