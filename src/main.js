@@ -19,6 +19,11 @@ const PRIMARY_TABS = [
   { key: 'archive', label: '아카이브', path: '/archive/2026/' },
   { key: 'search', label: '검색', path: '/search/' }
 ];
+const SWIPE_TABS = [
+  ...PRIMARY_TABS.slice(0, 4),
+  { key: 'records', label: '쓰기', path: '/records/' },
+  ...PRIMARY_TABS.slice(4)
+];
 let user = null;
 let state = { resources: [], notes: [], topics: [], questions: [], bookmarks: [], noteTypes: [] };
 
@@ -801,7 +806,7 @@ async function render() {
 
 function primaryTabIndex() {
   const path = pathFromLocation();
-  return PRIMARY_TABS.findIndex((tab) => {
+  return SWIPE_TABS.findIndex((tab) => {
     if (tab.key === 'home') return path === '/' || path === '';
     if (tab.key === 'archive') return /^\/archive\/\d{4}\/?$/.test(path);
     return path === tab.path || path === tab.path.replace(/\/$/, '');
@@ -844,7 +849,7 @@ function bindPrimaryTabSwipe() {
     gesture.dx = dx;
     event.preventDefault();
     const index = primaryTabIndex();
-    const blocked = (dx > 0 && index === 0) || (dx < 0 && index === PRIMARY_TABS.length - 1);
+    const blocked = (dx > 0 && index === 0) || (dx < 0 && index === SWIPE_TABS.length - 1);
     const visualDx = blocked ? dx * 0.18 : dx * 0.55;
     gesture.page.classList.add('swipe-dragging');
     gesture.page.style.transform = `translateX(${visualDx}px)`;
@@ -862,18 +867,18 @@ function bindPrimaryTabSwipe() {
     }
     const index = primaryTabIndex();
     const nextIndex = current.dx < 0 ? index + 1 : index - 1;
-    if (nextIndex < 0 || nextIndex >= PRIMARY_TABS.length) {
+    if (nextIndex < 0 || nextIndex >= SWIPE_TABS.length) {
       reset(current.page);
       return;
     }
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      navigate(PRIMARY_TABS[nextIndex].path);
+      navigate(SWIPE_TABS[nextIndex].path);
       return;
     }
     current.page.classList.add('swipe-commit');
     current.page.style.transform = `translateX(${current.dx < 0 ? '-18%' : '18%'})`;
     current.page.style.opacity = '0';
-    setTimeout(() => navigate(PRIMARY_TABS[nextIndex].path), 180);
+    setTimeout(() => navigate(SWIPE_TABS[nextIndex].path), 180);
   };
 
   root.addEventListener('touchend', finish, { passive: true });
