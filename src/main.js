@@ -25,7 +25,41 @@ const SWIPE_TABS = [
   ...PRIMARY_TABS.slice(4)
 ];
 let user = null;
-let state = { resources: [], notes: [], topics: [], questions: [], bookmarks: [], noteTypes: [] };
+let authEpoch = 0;
+let ownerVerifiedId = null;
+let state = emptyUserState();
+
+function emptyUserState() {
+  return { resources: [], notes: [], questions: [], topics: [], bookmarks: [], relations: [], noteTypes: [] };
+}
+
+function clearUserState() {
+  state = emptyUserState();
+}
+
+function isCurrentRequest(userId, epoch, route) {
+  return user?.id === userId && authEpoch === epoch && (route === undefined || pathFromLocation() === route);
+}
+
+function currentViewGuard() {
+  const userId = user?.id;
+  const epoch = authEpoch;
+  const route = pathFromLocation();
+  return () => isCurrentRequest(userId, epoch, route);
+}
+
+function setAuthUser(next) {
+  if (next?.id === user?.id) {
+    user = next;
+    return false;
+  }
+  authEpoch += 1;
+  user = next;
+  ownerVerifiedId = null;
+  clearUserState();
+  root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
+  return true;
+}
 
 function esc(value = '') {
   return String(value).replace(/[&<>'"]/g, (char) => ({
@@ -85,10 +119,15 @@ function bindCommon() {
 }
 
 async function refreshState() {
+  const userId = user?.id;
+  const epoch = authEpoch;
+  if (!userId || ownerVerifiedId !== userId) return false;
   const [resources, notes, topics, questions, bookmarks, noteTypes] = await Promise.all([
     api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks(), api.listNoteTypes()
   ]);
-  state = { resources, notes, topics, questions, bookmarks, noteTypes };
+  if (!isCurrentRequest(userId, epoch)) return false;
+  state = { resources, notes, topics, questions, bookmarks, relations: [], noteTypes };
+  return true;
 }
 
 function loginView() {
@@ -113,9 +152,10 @@ function loginView() {
     status.textContent = '로그인 중…';
     try {
       const form = new FormData(event.currentTarget);
-      user = await api.signIn(form.get('email'), form.get('password'));
-      await refreshState();
-      render();
+      const epoch = authEpoch;
+      const signedIn = await api.signIn(form.get('email'), form.get('password'));
+      if (authEpoch !== epoch && user?.id !== signedIn?.id) return;
+      if (setAuthUser(signedIn)) render();
     } catch (error) {
       status.textContent = error.message;
       status.classList.add('error');
@@ -138,8 +178,8 @@ function resourceItem(resource) {
   </div>`;
 }
 
-function bindResourceBookmarkButtons(){document.querySelectorAll('[data-resource-bookmark]').forEach(button=>button.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();const rid=button.dataset.resourceBookmark;const old=state.bookmarks.find(b=>b.resource_id===rid&&b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:rid,bookmark_type:'resource'},user.id);await refreshState();render();}));}
-function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const items=state.bookmarks.map(b=>({b,r:rm.get(b.resource_id)})).filter(x=>x.r);root.innerHTML=shell(`<section class="hero bookmark-hero"><div class="eyebrow">책갈피</div><h1>다시 볼 곳</h1><p>다시 보고 싶은 글과 문장을 한곳에서 찾는다.</p></section><section class="card bookmark-section bookmark-unified"><div class="bookmark-index">${items.map(({b,r})=>b.bookmark_type==='resource'?`<div class="bookmark-index-row"><a class="bookmark-index-main" href="${href('/read/'+r.id+'/')}" data-nav="/read/${r.id}/"><span class="bookmark-kind">글</span><span class="bookmark-index-title">${esc(r.author||r.source_name||'')}${(r.author||r.source_name)?' · ':''}${esc(r.title)}</span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`:`<div class="bookmark-index-row"><a class="bookmark-index-main bookmark-index-passage" href="${href('/read/'+b.resource_id+'/?bookmark='+encodeURIComponent(b.id))}" data-passage-bookmark="${b.id}"><span class="bookmark-kind">문장</span><span class="bookmark-index-copy"><strong class="bookmark-index-context">${esc(r.title)}</strong><span class="bookmark-index-text">“${esc(b.selected_text||'')}”</span></span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`).join('')||empty('아직 책갈피가 없음')}</div></section>`,'bookmarks');bindCommon();document.querySelectorAll('[data-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);render();}));document.querySelectorAll('[data-delete-bookmark]').forEach(x=>x.addEventListener('click',async()=>{await api.deleteBookmark(x.dataset.deleteBookmark);await refreshState();bookmarkView();}));}
+function bindResourceBookmarkButtons(){document.querySelectorAll('[data-resource-bookmark]').forEach(button=>button.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();const stillCurrent=currentViewGuard();const rid=button.dataset.resourceBookmark;const old=state.bookmarks.find(b=>b.resource_id===rid&&b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:rid,bookmark_type:'resource'},user.id);if(!stillCurrent()||!await refreshState()||!stillCurrent())return;render();}));}
+function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const items=state.bookmarks.map(b=>({b,r:rm.get(b.resource_id)})).filter(x=>x.r);root.innerHTML=shell(`<section class="hero bookmark-hero"><div class="eyebrow">책갈피</div><h1>다시 볼 곳</h1><p>다시 보고 싶은 글과 문장을 한곳에서 찾는다.</p></section><section class="card bookmark-section bookmark-unified"><div class="bookmark-index">${items.map(({b,r})=>b.bookmark_type==='resource'?`<div class="bookmark-index-row"><a class="bookmark-index-main" href="${href('/read/'+r.id+'/')}" data-nav="/read/${r.id}/"><span class="bookmark-kind">글</span><span class="bookmark-index-title">${esc(r.author||r.source_name||'')}${(r.author||r.source_name)?' · ':''}${esc(r.title)}</span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`:`<div class="bookmark-index-row"><a class="bookmark-index-main bookmark-index-passage" href="${href('/read/'+b.resource_id+'/?bookmark='+encodeURIComponent(b.id))}" data-passage-bookmark="${b.id}"><span class="bookmark-kind">문장</span><span class="bookmark-index-copy"><strong class="bookmark-index-context">${esc(r.title)}</strong><span class="bookmark-index-text">“${esc(b.selected_text||'')}”</span></span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`).join('')||empty('아직 책갈피가 없음')}</div></section>`,'bookmarks');bindCommon();document.querySelectorAll('[data-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);render();}));document.querySelectorAll('[data-delete-bookmark]').forEach(x=>x.addEventListener('click',async()=>{const stillCurrent=currentViewGuard();await api.deleteBookmark(x.dataset.deleteBookmark);if(!stillCurrent()||!await refreshState()||!stillCurrent())return;bookmarkView();}));}
 
 const DEFAULT_NOTE_TYPES = ['생각','질문','좋은 문장','반론','글감','업무 연결'];
 
@@ -212,16 +252,18 @@ function bindNoteActions() {
   }));
   document.querySelectorAll('[data-note-edit-form]').forEach((form) => form.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const body = form.querySelector('textarea')?.value.trim() || '';
     if (!body) return;
     await api.updateNote(form.dataset.noteEditForm, body);
-    await refreshState();
+    if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
     await rerenderCurrentView();
   }));
   document.querySelectorAll('[data-note-delete]').forEach((button) => button.addEventListener('click', async () => {
     if (!confirm('이 메모를 삭제할까요?')) return;
+    const stillCurrent = currentViewGuard();
     await api.deleteNote(button.dataset.noteDelete);
-    await refreshState();
+    if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
     await rerenderCurrentView();
   }));
 }
@@ -304,12 +346,13 @@ function readListView() {
 
   document.querySelector('#resource-form').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const status = document.querySelector('#resource-status');
     status.textContent = '저장 중…';
     try {
       const form = Object.fromEntries(new FormData(event.currentTarget));
       await api.createResource(form, user.id);
-      await refreshState();
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       render();
     } catch (error) {
       status.textContent = error.message;
@@ -337,6 +380,8 @@ function relationManager(sourceType, sourceId, relations) {
 function bindRelationToggles(relationMap) {
   document.querySelectorAll('[data-relation-toggle]').forEach((input) => {
     input.addEventListener('change', async () => {
+      const userId = user?.id;
+      const epoch = authEpoch;
       const sourceType = input.dataset.sourceType;
       const sourceId = input.dataset.sourceId;
       const targetType = input.dataset.targetType;
@@ -345,17 +390,20 @@ function bindRelationToggles(relationMap) {
       const relations = relationMap.get(key) ?? [];
       try {
         if (input.checked) {
-          const created = await api.addRelation({ source_type: sourceType, source_id: sourceId, target_type: targetType, target_id: targetId }, user.id);
+          const created = await api.addRelation({ source_type: sourceType, source_id: sourceId, target_type: targetType, target_id: targetId }, userId);
+          if (!isCurrentRequest(userId, epoch)) return;
           relations.push(created);
           relationMap.set(key, relations);
         } else {
           const existing = relations.find((relation) => relation.target_type === targetType && relation.target_id === targetId);
           if (existing) {
             await api.removeRelation(existing.id);
+            if (!isCurrentRequest(userId, epoch)) return;
             relationMap.set(key, relations.filter((relation) => relation.id !== existing.id));
           }
         }
       } catch (error) {
+        if (!isCurrentRequest(userId, epoch)) return;
         input.checked = !input.checked;
         alert(`연결 저장에 실패했습니다: ${error.message}`);
       }
@@ -364,8 +412,24 @@ function bindRelationToggles(relationMap) {
 }
 
 async function resourceDetailView(id) {
-  const resource = state.resources.find((item) => item.id === id) || await api.getResource(id);
-  const [notes, relations, bookmarks] = await Promise.all([api.listNotes(id), api.listRelations('resource', id), api.listBookmarks(id)]);
+  const userId = user?.id;
+  const epoch = authEpoch;
+  const route = pathFromLocation();
+  if (!userId || ownerVerifiedId !== userId) return;
+  let resource, notes, relations, bookmarks;
+  try {
+    resource = state.resources.find((item) => item.id === id) || await api.getResource(id);
+    if (!isCurrentRequest(userId, epoch, route)) return;
+    if (!resource) return notFound();
+    [notes, relations, bookmarks] = await Promise.all([api.listNotes(id), api.listRelations('resource', id), api.listBookmarks(id)]);
+  } catch (error) {
+    if (!isCurrentRequest(userId, epoch, route)) return;
+    root.innerHTML = shell(`<section class="hero"><div class="eyebrow">읽기</div><h1>자료를 불러오지 못함</h1><p>${esc(error?.message || '잠시 후 다시 시도하세요.')}</p><button class="btn" id="retry-resource" type="button">다시 시도</button></section>`, 'read');
+    bindCommon();
+    document.querySelector('#retry-resource').onclick = () => render();
+    return;
+  }
+  if (!isCurrentRequest(userId, epoch, route)) return;
   const relationMap = new Map([[`resource:${id}`, relations]]);
   const originalUrl = safeHttpUrl(resource.original_url);
 
@@ -433,7 +497,7 @@ async function resourceDetailView(id) {
   window.addEventListener('scroll',syncTopButton,{passive:true});syncTopButton();
   document.querySelectorAll('[data-local-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);resourceDetailView(id);}));
 
-  document.querySelector('#resource-bookmark-toggle')?.addEventListener('click',async()=>{const old=bookmarks.find(b=>b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:id,bookmark_type:'resource'},user.id);await refreshState();resourceDetailView(id);});
+  document.querySelector('#resource-bookmark-toggle')?.addEventListener('click',async()=>{const stillCurrent=currentViewGuard();const old=bookmarks.find(b=>b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:id,bookmark_type:'resource'},user.id);if(!stillCurrent()||!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
   const article=document.querySelector('#resource-article'); const pop=document.querySelector('#selection-bookmark-pop'); let pending=null; let selectionTimer=null;
   const captureArticleSelection=()=>{const s=window.getSelection();const t=s?.toString().trim()||'';if(!t||t.length>2000||!s?.rangeCount||!article)return false;const range=s.getRangeAt(0);const common=range.commonAncestorContainer;const node=common.nodeType===Node.TEXT_NODE?common.parentNode:common;if(!article.contains(node))return false;const full=article.innerText;const start=full.indexOf(t);pending={text:t,start};pop.hidden=false;return true;};
   const scheduleSelectionCapture=(delay=250)=>{clearTimeout(selectionTimer);selectionTimer=setTimeout(()=>captureArticleSelection(),delay);};
@@ -441,7 +505,7 @@ async function resourceDetailView(id) {
   article?.addEventListener('touchend',()=>{scheduleSelectionCapture(250);scheduleSelectionCapture(650);},{passive:true});
   document.addEventListener('selectionchange',()=>scheduleSelectionCapture(350));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSelectionCapture(200);});
-  document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();resourceDetailView(id);});
+  document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const stillCurrent=currentViewGuard();const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);if(!stillCurrent())return;pop.hidden=true;window.getSelection()?.removeAllRanges();if(!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
   const bookmarkId=new URLSearchParams(location.search).get('bookmark');
   if(bookmarkId){
     const target=state.bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage'&&String(b.resource_id)===String(id));
@@ -457,7 +521,7 @@ async function resourceDetailView(id) {
     }
   }
 
-  document.querySelector('#save-selection-note')?.addEventListener('click',async()=>{if(!pending)return;const memo=prompt('선택한 문장에 남길 메모를 입력하세요.');if(memo===null)return;const clean=memo.trim();if(!clean)return;await api.createNote({body:`> ${pending.text.replace(/\n/g,'\n> ')}\n\n${clean}`,note_type:'생각',resource_id:id},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();resourceDetailView(id);});
+  document.querySelector('#save-selection-note')?.addEventListener('click',async()=>{if(!pending)return;const stillCurrent=currentViewGuard();const memo=prompt('선택한 문장에 남길 메모를 입력하세요.');if(memo===null)return;const clean=memo.trim();if(!clean)return;await api.createNote({body:`> ${pending.text.replace(/\n/g,'\n> ')}\n\n${clean}`,note_type:'생각',resource_id:id},user.id);if(!stillCurrent())return;pop.hidden=true;window.getSelection()?.removeAllRanges();if(!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
 
   const editCard = document.querySelector('#resource-edit-card');
   document.querySelector('#resource-edit-toggle')?.addEventListener('click', () => {
@@ -467,13 +531,14 @@ async function resourceDetailView(id) {
   document.querySelector('#resource-edit-cancel')?.addEventListener('click', () => { editCard.hidden = true; });
   document.querySelector('#resource-edit-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const status = document.querySelector('#resource-edit-status');
     status.textContent = '저장 중…';
     status.classList.remove('error');
     try {
       const form = Object.fromEntries(new FormData(event.currentTarget));
       await api.updateResource(id, form);
-      await refreshState();
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       resourceDetailView(id);
     } catch (error) {
       status.textContent = error.message;
@@ -483,12 +548,13 @@ async function resourceDetailView(id) {
 
   document.querySelector('#resource-note-form').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const status = document.querySelector('#note-status');
     status.textContent = '저장 중…';
     try {
       const form = Object.fromEntries(new FormData(event.currentTarget));
       await api.createNote({ ...form, resource_id: id }, user.id);
-      await refreshState();
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       resourceDetailView(id);
     } catch (error) {
       status.textContent = error.message;
@@ -498,8 +564,13 @@ async function resourceDetailView(id) {
 }
 
 async function notesView() {
+  const userId = user?.id;
+  const epoch = authEpoch;
+  const route = pathFromLocation();
+  if (!userId || ownerVerifiedId !== userId) return;
   const independent = state.notes.filter((note) => !note.resource_id);
   const relationPairs = await Promise.all(independent.map(async (note) => [note.id, await api.listRelations('note', note.id)]));
+  if (!isCurrentRequest(userId, epoch, route)) return;
   const relationMap = new Map(relationPairs.map(([noteId, relations]) => [`note:${noteId}`, relations]));
 
   root.innerHTML = shell(`
@@ -544,18 +615,20 @@ async function notesView() {
   });
   document.querySelector('#note-type-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const name = new FormData(event.currentTarget).get('name');
     try {
       await api.createNoteType(name, user.id);
-      await refreshState();
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       notesView();
     } catch (error) {
       alert(error.code === '23505' ? '이미 있는 성격입니다.' : error.message);
     }
   });
   document.querySelectorAll('[data-delete-note-type]').forEach((button) => button.addEventListener('click', async () => {
+    const stillCurrent = currentViewGuard();
     await api.deleteNoteType(button.dataset.deleteNoteType);
-    await refreshState();
+    if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
     notesView();
   }));
   document.querySelectorAll('[data-note-record-edit]').forEach((button) => button.addEventListener('click', () => {
@@ -570,12 +643,13 @@ async function notesView() {
 
   document.querySelector('#independent-note-form').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const status = document.querySelector('#ind-note-status');
     status.textContent = '저장 중…';
     try {
       const form = Object.fromEntries(new FormData(event.currentTarget));
       await api.createNote(form, user.id);
-      await refreshState();
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       notesView();
     } catch (error) {
       status.textContent = error.message;
@@ -596,10 +670,11 @@ function topicsView() {
   bindNoteActions();
   document.querySelector('#topic-form').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const status = document.querySelector('#topic-status');
     try {
       await api.createTopic(new FormData(event.currentTarget).get('name'), user.id);
-      await refreshState();
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       topicsView();
     } catch (error) {
       status.textContent = error.message;
@@ -620,10 +695,11 @@ function questionsView() {
   bindNoteActions();
   document.querySelector('#question-form').addEventListener('submit', async (event) => {
     event.preventDefault();
+    const stillCurrent = currentViewGuard();
     const status = document.querySelector('#question-status');
     try {
       await api.createQuestion(new FormData(event.currentTarget).get('body'), user.id);
-      await refreshState();
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       questionsView();
     } catch (error) {
       status.textContent = error.message;
@@ -641,9 +717,14 @@ function relatedSourceItems(relations) {
 }
 
 async function topicDetailView(id) {
+  const userId = user?.id;
+  const epoch = authEpoch;
+  const route = pathFromLocation();
+  if (!userId || ownerVerifiedId !== userId) return;
   const topic = state.topics.find((item) => item.id === id);
   if (!topic) return notFound();
   const relations = await api.listRelationsByTarget('topic', id);
+  if (!isCurrentRequest(userId, epoch, route)) return;
   const related = relatedSourceItems(relations);
   root.innerHTML = shell(`
     <section class="hero"><div class="eyebrow">주제</div><h1>${esc(topic.name)}</h1><p>${esc(topic.summary || '이 주제와 연결한 글과 메모가 시간에 따라 쌓인다.')}</p></section>
@@ -657,9 +738,14 @@ async function topicDetailView(id) {
 }
 
 async function questionDetailView(id) {
+  const userId = user?.id;
+  const epoch = authEpoch;
+  const route = pathFromLocation();
+  if (!userId || ownerVerifiedId !== userId) return;
   const question = state.questions.find((item) => item.id === id);
   if (!question) return notFound();
   const relations = await api.listRelationsByTarget('question', id);
+  if (!isCurrentRequest(userId, epoch, route)) return;
   const related = relatedSourceItems(relations);
   root.innerHTML = shell(`
     <section class="hero"><div class="eyebrow">질문</div><h1>${esc(question.body)}</h1><p>${question.current_thought ? esc(question.current_thought) : '이 질문과 관련된 읽기와 메모를 계속 연결한다.'}</p></section>
@@ -710,12 +796,13 @@ async function archiveView(year = '2026') {
   document.querySelectorAll('.archive-note-form').forEach((form) => {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      const stillCurrent = currentViewGuard();
       const status = form.querySelector('.status');
       status.textContent = '저장 중…';
       try {
         const values = Object.fromEntries(new FormData(form));
         await api.createNote({ ...values, resource_id: form.dataset.resourceId }, user.id);
-        await refreshState();
+        if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
         archiveView(year);
       } catch (error) {
         status.textContent = error.message;
@@ -767,20 +854,34 @@ function notFound() {
 
 async function render() {
   if (!user) {
+    const epoch = authEpoch;
     root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
-    user = await api.currentUser();
-    if (!user) {
+    const current = await api.currentUser();
+    if (authEpoch !== epoch) return;
+    if (!current) {
       loginView();
       return;
     }
+    setAuthUser(current);
+  }
+
+  if (ownerVerifiedId !== user.id) {
+    const userId = user.id;
+    const epoch = authEpoch;
+    root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
     const owner = await api.isPersonalOwner();
+    if (!isCurrentRequest(userId, epoch)) return;
     if (!owner) {
+      setAuthUser(null);
+      const deniedEpoch = authEpoch;
       await api.signOut().catch(() => {});
-      user = null;
+      // signOut can emit one more null auth event after the local clear.
+      if (user || authEpoch > deniedEpoch + 1) return;
       root.innerHTML = '<div class="shell login-wrap"><section class="login"><div class="eyebrow">Personal knowledge archive</div><h1>개인용 읽생기</h1><p class="muted">현재 이 읽생기는 개인용으로 운영 중입니다.</p></section></div>';
       return;
     }
-    await refreshState();
+    ownerVerifiedId = userId;
+    if (!await refreshState()) return;
   }
 
   const path = pathFromLocation();
@@ -899,10 +1000,15 @@ bindPrimaryTabSwipe();
 window.addEventListener('popstate', render);
 supabase.auth.onAuthStateChange((_event, session) => {
   const next = session?.user ?? null;
-  if (Boolean(next) !== Boolean(user)) {
-    user = next;
-    if (user) refreshState().then(render);
-    else render();
+  if ((_event === 'SIGNED_OUT' || _event === 'INITIAL_SESSION') && !next && !user) {
+    authEpoch += 1;
+    clearUserState();
+    loginView();
+    return;
+  }
+  if (setAuthUser(next)) {
+    if (next) render();
+    else loginView();
   }
 });
 
