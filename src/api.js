@@ -81,7 +81,7 @@ export async function listResources() {
 }
 
 export async function getResource(id) {
-  const { data, error } = await supabase.from('rtw_resources').select('*').eq('id', id).single();
+  const { data, error } = await supabase.from('rtw_resources').select('*').eq('id', id).maybeSingle();
   fail(error);
   return data;
 }

@@ -380,6 +380,8 @@ function relationManager(sourceType, sourceId, relations) {
 function bindRelationToggles(relationMap) {
   document.querySelectorAll('[data-relation-toggle]').forEach((input) => {
     input.addEventListener('change', async () => {
+      const userId = user?.id;
+      const epoch = authEpoch;
       const sourceType = input.dataset.sourceType;
       const sourceId = input.dataset.sourceId;
       const targetType = input.dataset.targetType;
@@ -388,17 +390,20 @@ function bindRelationToggles(relationMap) {
       const relations = relationMap.get(key) ?? [];
       try {
         if (input.checked) {
-          const created = await api.addRelation({ source_type: sourceType, source_id: sourceId, target_type: targetType, target_id: targetId }, user.id);
+          const created = await api.addRelation({ source_type: sourceType, source_id: sourceId, target_type: targetType, target_id: targetId }, userId);
+          if (!isCurrentRequest(userId, epoch)) return;
           relations.push(created);
           relationMap.set(key, relations);
         } else {
           const existing = relations.find((relation) => relation.target_type === targetType && relation.target_id === targetId);
           if (existing) {
             await api.removeRelation(existing.id);
+            if (!isCurrentRequest(userId, epoch)) return;
             relationMap.set(key, relations.filter((relation) => relation.id !== existing.id));
           }
         }
       } catch (error) {
+        if (!isCurrentRequest(userId, epoch)) return;
         input.checked = !input.checked;
         alert(`연결 저장에 실패했습니다: ${error.message}`);
       }
@@ -411,9 +416,19 @@ async function resourceDetailView(id) {
   const epoch = authEpoch;
   const route = pathFromLocation();
   if (!userId || ownerVerifiedId !== userId) return;
-  const resource = state.resources.find((item) => item.id === id) || await api.getResource(id);
-  if (!isCurrentRequest(userId, epoch, route)) return;
-  const [notes, relations, bookmarks] = await Promise.all([api.listNotes(id), api.listRelations('resource', id), api.listBookmarks(id)]);
+  let resource, notes, relations, bookmarks;
+  try {
+    resource = state.resources.find((item) => item.id === id) || await api.getResource(id);
+    if (!isCurrentRequest(userId, epoch, route)) return;
+    if (!resource) return notFound();
+    [notes, relations, bookmarks] = await Promise.all([api.listNotes(id), api.listRelations('resource', id), api.listBookmarks(id)]);
+  } catch (error) {
+    if (!isCurrentRequest(userId, epoch, route)) return;
+    root.innerHTML = shell(`<section class="hero"><div class="eyebrow">읽기</div><h1>자료를 불러오지 못함</h1><p>${esc(error?.message || '잠시 후 다시 시도하세요.')}</p><button class="btn" id="retry-resource" type="button">다시 시도</button></section>`, 'read');
+    bindCommon();
+    document.querySelector('#retry-resource').onclick = () => render();
+    return;
+  }
   if (!isCurrentRequest(userId, epoch, route)) return;
   const relationMap = new Map([[`resource:${id}`, relations]]);
   const originalUrl = safeHttpUrl(resource.original_url);
