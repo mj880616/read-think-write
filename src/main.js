@@ -20,7 +20,7 @@ const PRIMARY_TABS = [
   { key: 'search', label: '검색', path: '/search/' }
 ];
 let user = null;
-let state = { resources: [], notes: [], topics: [], questions: [], bookmarks: [] };
+let state = { resources: [], notes: [], topics: [], questions: [], bookmarks: [], noteTypes: [] };
 
 function esc(value = '') {
   return String(value).replace(/[&<>'"]/g, (char) => ({
@@ -75,10 +75,10 @@ function bindCommon() {
 }
 
 async function refreshState() {
-  const [resources, notes, topics, questions, bookmarks] = await Promise.all([
-    api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks()
+  const [resources, notes, topics, questions, bookmarks, noteTypes] = await Promise.all([
+    api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks(), api.listNoteTypes()
   ]);
-  state = { resources, notes, topics, questions, bookmarks };
+  state = { resources, notes, topics, questions, bookmarks, noteTypes };
 }
 
 function loginView() {
@@ -130,6 +130,14 @@ function resourceItem(resource) {
 
 function bindResourceBookmarkButtons(){document.querySelectorAll('[data-resource-bookmark]').forEach(button=>button.addEventListener('click',async e=>{e.preventDefault();e.stopPropagation();const rid=button.dataset.resourceBookmark;const old=state.bookmarks.find(b=>b.resource_id===rid&&b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:rid,bookmark_type:'resource'},user.id);await refreshState();render();}));}
 function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const items=state.bookmarks.map(b=>({b,r:rm.get(b.resource_id)})).filter(x=>x.r);root.innerHTML=shell(`<section class="hero bookmark-hero"><div class="eyebrow">책갈피</div><h1>다시 볼 곳</h1><p>다시 보고 싶은 글과 문장을 한곳에서 찾는다.</p></section><section class="card bookmark-section bookmark-unified"><div class="bookmark-index">${items.map(({b,r})=>b.bookmark_type==='resource'?`<div class="bookmark-index-row"><a class="bookmark-index-main" href="${href('/read/'+r.id+'/')}" data-nav="/read/${r.id}/"><span class="bookmark-kind">글</span><span class="bookmark-index-title">${esc(r.author||r.source_name||'')}${(r.author||r.source_name)?' · ':''}${esc(r.title)}</span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`:`<div class="bookmark-index-row"><a class="bookmark-index-main bookmark-index-passage" href="${href('/read/'+b.resource_id+'/?bookmark='+encodeURIComponent(b.id))}" data-passage-bookmark="${b.id}"><span class="bookmark-kind">문장</span><span class="bookmark-index-copy"><strong class="bookmark-index-context">${esc(r.title)}</strong><span class="bookmark-index-text">“${esc(b.selected_text||'')}”</span></span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`).join('')||empty('아직 책갈피가 없음')}</div></section>`,'bookmarks');bindCommon();document.querySelectorAll('[data-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);render();}));document.querySelectorAll('[data-delete-bookmark]').forEach(x=>x.addEventListener('click',async()=>{await api.deleteBookmark(x.dataset.deleteBookmark);await refreshState();bookmarkView();}));}
+
+const DEFAULT_NOTE_TYPES = ['생각','질문','좋은 문장','반론','글감','업무 연결'];
+
+function noteTypeOptions(selected = '') {
+  const names = [...DEFAULT_NOTE_TYPES, ...state.noteTypes.map((item) => item.name)]
+    .filter((name, index, all) => all.indexOf(name) === index);
+  return '<option value="">분류 안 함</option>' + names.map((name) => `<option value="${esc(name)}" ${name === selected ? 'selected' : ''}>${esc(name)}</option>`).join('');
+}
 
 function noteParts(note) {
   const body = String(note?.body || '');
@@ -383,7 +391,7 @@ async function resourceDetailView(id) {
       <h2>나의 메모</h2>
       <form id="resource-note-form" class="form">
         <div class="field"><textarea name="body" placeholder="읽고 남은 생각, 질문, 반론, 글감…" required></textarea></div>
-        <div class="field"><label>성격 (선택)</label><select name="note_type"><option value="">분류 안 함</option><option>생각</option><option>질문</option><option>좋은 문장</option><option>반론</option><option>글감</option><option>업무 연결</option></select></div>
+        <div class="field"><label>성격 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
         <button class="btn">메모 저장</button><div class="status" id="note-status"></div>
       </form>
       <div class="stack" style="margin-top:20px">${notes.map(noteItem).join('') || empty('이 글에 남긴 메모가 아직 없음')}</div>
@@ -491,9 +499,16 @@ async function notesView() {
         <h2>새 메모</h2>
         <form id="independent-note-form" class="form">
           <div class="field"><textarea name="body" required placeholder="지금 떠오른 생각을 그대로…"></textarea></div>
-          <div class="field"><label>성격 (선택)</label><select name="note_type"><option value="">분류 안 함</option><option>생각</option><option>질문</option><option>좋은 문장</option><option>반론</option><option>글감</option><option>업무 연결</option></select></div>
+          <div class="field"><label>성격 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
           <button class="btn">저장</button><div id="ind-note-status" class="status"></div>
         </form>
+        <div class="note-type-manager">
+          <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button">성격 관리</button>
+          <div id="note-type-manager-panel" hidden>
+            <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 성격"><button class="btn secondary small" type="submit">추가</button></form>
+            <div class="note-type-list">${state.noteTypes.map((item)=>`<span>${esc(item.name)} <button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">×</button></span>`).join('') || '<span class="muted">추가한 성격 없음</span>'}</div>
+          </div>
+        </div>
       </section>
       <section class="card">
         <h2>메모</h2>
@@ -513,6 +528,26 @@ async function notesView() {
   bindCommon();
   bindNoteActions();
   bindRelationToggles(relationMap);
+  document.querySelector('#note-type-manage-toggle')?.addEventListener('click', () => {
+    const panel = document.querySelector('#note-type-manager-panel');
+    if (panel) panel.hidden = !panel.hidden;
+  });
+  document.querySelector('#note-type-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const name = new FormData(event.currentTarget).get('name');
+    try {
+      await api.createNoteType(name, user.id);
+      await refreshState();
+      notesView();
+    } catch (error) {
+      alert(error.code === '23505' ? '이미 있는 성격입니다.' : error.message);
+    }
+  });
+  document.querySelectorAll('[data-delete-note-type]').forEach((button) => button.addEventListener('click', async () => {
+    await api.deleteNoteType(button.dataset.deleteNoteType);
+    await refreshState();
+    notesView();
+  }));
   document.querySelectorAll('[data-note-record-edit]').forEach((button) => button.addEventListener('click', () => {
     const record = button.closest('[data-note-record]');
     const form = record?.querySelector('[data-note-edit-form]');
@@ -642,7 +677,7 @@ async function archiveView(year = '2026') {
             <h3>나의 메모</h3>
             <form class="form archive-note-form" data-resource-id="${resource.id}">
               <div class="field"><textarea name="body" required placeholder="이 글을 읽고 남은 생각…"></textarea></div>
-              <div class="field"><label>성격 (선택)</label><select name="note_type"><option value="">분류 안 함</option><option>생각</option><option>질문</option><option>좋은 문장</option><option>반론</option><option>글감</option><option>업무 연결</option></select></div>
+              <div class="field"><label>성격 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
               <button class="btn small">메모 저장</button><div class="status"></div>
             </form>
             <div class="stack archive-saved-notes">${notes.map(noteItem).join('') || empty('이 글에 남긴 메모가 아직 없음')}</div>
