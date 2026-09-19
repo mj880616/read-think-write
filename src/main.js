@@ -401,7 +401,7 @@ async function resourceDetailView(id) {
       <h2>나의 메모</h2>
       <form id="resource-note-form" class="form">
         <div class="field"><textarea name="body" placeholder="읽고 남은 생각, 질문, 반론, 글감…" required></textarea></div>
-        <div class="field"><label>성격 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
+        <div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
         <button class="btn">메모 저장</button><div class="status" id="note-status"></div>
       </form>
       <div class="stack" style="margin-top:20px">${notes.map(noteItem).join('') || empty('이 글에 남긴 메모가 아직 없음')}</div>
@@ -513,7 +513,7 @@ async function notesView() {
           <button class="btn">저장</button><div id="ind-note-status" class="status"></div>
         </form>
         <div class="note-type-manager">
-          <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button">성격 관리</button>
+          <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button">유형 관리</button>
           <div id="note-type-manager-panel" hidden>
             <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 성격"><button class="btn secondary small" type="submit">추가</button></form>
             <div class="note-type-list">${state.noteTypes.map((item)=>`<span>${esc(item.name)} <button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">×</button></span>`).join('') || '<span class="muted">추가한 성격 없음</span>'}</div>
