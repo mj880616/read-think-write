@@ -516,7 +516,7 @@ async function notesView() {
           <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button">유형 관리</button>
           <div id="note-type-manager-panel" hidden>
             <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 유형"><button class="btn secondary small" type="submit">추가</button></form>
-            <div class="note-type-list">${state.noteTypes.map((item)=>`<span>${esc(item.name)} <button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">×</button></span>`).join('') || '<span class="muted">추가한 성격 없음</span>'}</div>
+            <div class="note-type-list">${state.noteTypes.map((item)=>`<span>${esc(item.name)} <button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">×</button></span>`).join('') || '<span class="muted">추가한 유형 없음</span>'}</div>
           </div>
         </div>
       </section>
