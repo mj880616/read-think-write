@@ -252,7 +252,7 @@ function homeView() {
     <section class="hero">
       <div class="eyebrow">나의 생각 저장소</div>
       <h1>읽은 것이 생각이 되고,<br>생각이 다시 글이 되는 곳.</h1>
-      <p>${isNewWorkspace ? '첫 글을 저장하면 읽기·메모·질문이 서로 연결되기 시작한다.' : '최근 기록에서 다시 시작한다. 날짜는 기억을 복원하고, 주제와 질문은 서로 떨어진 생각을 연결한다.'}</p>
+      ${isNewWorkspace ? '<p>첫 글을 저장하면 읽기·메모·질문이 서로 연결되기 시작한다.</p>' : ''}
     </section>
     <section class="grid">
       <div class="card"><h2>최근 읽기</h2><div class="stack">${resources.map(resourceItem).join('') || empty('아직 저장된 글이 없음')}</div></div>
