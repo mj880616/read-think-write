@@ -47,6 +47,10 @@ function href(path) {
 
 function navigate(path) {
   history.pushState({}, '', href(path));
+  if (path === '/records/' || path === '/records') {
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    return;
+  }
   render();
 }
 
