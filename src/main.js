@@ -134,7 +134,7 @@ function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const
 function noteItem(note) {
   const text = esc(note.body).replace(/\n/g, ' ');
   return `<div class="item note-item" data-note-item="${note.id}">
-    <div class="note-item-head"><a class="note-item-link" data-note-display href="${href('/notes/?note='+encodeURIComponent(note.id))}" data-note-target="${note.id}">${text.slice(0, 150)}${text.length > 150 ? '…' : ''}</a><button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button></div>
+    <div class="note-item-head"><a class="note-item-link" data-note-display href="${note.resource_id ? href('/read/'+note.resource_id+'/?note='+encodeURIComponent(note.id)) : href('/notes/?note='+encodeURIComponent(note.id))}" data-note-target="${note.id}" data-note-resource="${note.resource_id || ''}">${text.slice(0, 150)}${text.length > 150 ? '…' : ''}</a><button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button></div>
     <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
     <div class="note-actions" data-note-actions="${note.id}" hidden><button type="button" data-note-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
     <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div></form>
@@ -145,8 +145,14 @@ function bindNoteActions() {
   document.querySelectorAll('[data-note-target]').forEach((link) => link.addEventListener('click', (event) => {
     event.preventDefault();
     const id = link.dataset.noteTarget;
-    history.pushState({}, '', href('/notes/?note='+encodeURIComponent(id)));
-    notesView();
+    const resourceId = link.dataset.noteResource;
+    if (resourceId) {
+      history.pushState({}, '', href('/read/'+resourceId+'/?note='+encodeURIComponent(id)));
+      resourceDetailView(resourceId);
+    } else {
+      history.pushState({}, '', href('/notes/?note='+encodeURIComponent(id)));
+      notesView();
+    }
   }));
   document.querySelectorAll('[data-note-menu]').forEach((button) => button.addEventListener('click', () => {
     const actions = document.querySelector(`[data-note-actions="${button.dataset.noteMenu}"]`);
@@ -390,6 +396,14 @@ async function resourceDetailView(id) {
   document.addEventListener('selectionchange',()=>scheduleSelectionCapture(350));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSelectionCapture(200);});
   document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);pop.hidden=true;window.getSelection()?.removeAllRanges();await refreshState();resourceDetailView(id);});
+  const targetNoteId = new URLSearchParams(location.search).get('note');
+  if (targetNoteId) {
+    const targetNote = notes.find((note) => String(note.id) === targetNoteId);
+    if (targetNote) {
+      const targetItem = document.querySelector(`[data-note-item="${CSS.escape(targetNoteId)}"]`);
+      if (targetItem) requestAnimationFrame(() => targetItem.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    }
+  }
   const bookmarkId=new URLSearchParams(location.search).get('bookmark');
   if(bookmarkId){
     const target=state.bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage'&&String(b.resource_id)===String(id));
