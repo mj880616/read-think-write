@@ -147,7 +147,7 @@ function bindNoteActions() {
     const id = link.dataset.noteTarget;
     const resourceId = link.dataset.noteResource;
     if (resourceId) {
-      history.pushState({}, '', href('/read/'+resourceId+'/?note='+encodeURIComponent(id)));
+      history.pushState({}, '', href('/read/' + resourceId + '/?note=' + encodeURIComponent(id)));
       resourceDetailView(resourceId);
     } else {
       history.pushState({}, '', href('/notes/?note='+encodeURIComponent(id)));
