@@ -468,6 +468,8 @@ async function notesView() {
           return `<details class="note-record" data-note-record="${note.id}"><summary>${esc(note.body).slice(0, 90)}${note.body.length > 90 ? '…' : ''}</summary>
             <div class="note-body">${esc(note.body).replace(/\n/g, '<br>')}</div>
             <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleString('ko-KR')}</div>
+            <div class="note-record-actions"><button type="button" data-note-record-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
+            <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-record-cancel="${note.id}">취소</button></div></form>
             <div class="note-links"><h3>이 메모 연결하기</h3>${relationManager('note', note.id, relations)}</div>
           </details>`;
         }).join('') || empty('독립 메모가 아직 없음')}
@@ -477,6 +479,15 @@ async function notesView() {
   bindCommon();
   bindNoteActions();
   bindRelationToggles(relationMap);
+  document.querySelectorAll('[data-note-record-edit]').forEach((button) => button.addEventListener('click', () => {
+    const record = button.closest('[data-note-record]');
+    const form = record?.querySelector('[data-note-edit-form]');
+    if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); }
+  }));
+  document.querySelectorAll('[data-note-record-cancel]').forEach((button) => button.addEventListener('click', () => {
+    const form = button.closest('[data-note-edit-form]');
+    if (form) form.hidden = true;
+  }));
 
   document.querySelector('#independent-note-form').addEventListener('submit', async (event) => {
     event.preventDefault();
