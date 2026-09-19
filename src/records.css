@@ -52,3 +52,19 @@
 .record-text{font-size:16px;line-height:1.85}
 .record-manage{justify-content:flex-start}
 }
+
+@media(min-width:761px){
+.record-detail-head,.record-lesson,.record-abc,.record-manage,.record-edit-card{max-width:1040px}
+.record-abc{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-template-areas:
+    "a c"
+    "b b";
+  align-items:start;
+}
+.record-abc>.record-section:nth-child(1){grid-area:a}
+.record-abc>.record-section:nth-child(2){grid-area:b}
+.record-abc>.record-section:nth-child(3){grid-area:c}
+.record-abc>.record-section:nth-child(1),
+.record-abc>.record-section:nth-child(3){height:100%}
+}
