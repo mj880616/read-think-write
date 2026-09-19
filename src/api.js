@@ -143,6 +143,26 @@ export async function updateResource(id, input) {
   return data;
 }
 
+export async function listNoteTypes() {
+  const { data, error } = await supabase.from('rtw_note_types').select('*').order('created_at');
+  fail(error);
+  return data ?? [];
+}
+
+export async function createNoteType(name, userId) {
+  const clean = String(name || '').trim();
+  if (!clean) throw new Error('성격 이름을 입력하세요.');
+  if (clean.length > 30) throw new Error('성격 이름은 30자 이내로 입력하세요.');
+  const { data, error } = await supabase.from('rtw_note_types').insert({ owner_id: userId, name: clean }).select().single();
+  fail(error);
+  return data;
+}
+
+export async function deleteNoteType(id) {
+  const { error } = await supabase.from('rtw_note_types').delete().eq('id', id);
+  fail(error);
+}
+
 export async function listNotes(resourceId = undefined) {
   let query = supabase.from('rtw_notes').select('*').order('updated_at', { ascending: false });
   query = resourceId === null
