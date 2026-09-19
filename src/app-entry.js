@@ -11,3 +11,4 @@ await import('./auth-enhance.js');
 await import('./reading-entry-flow.js');
 await import('./reading-import-ui.js');
 await import('./reading-ai-ui.js');
+await import('./records-ui.js');
