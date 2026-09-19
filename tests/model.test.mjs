@@ -30,6 +30,10 @@ assert.match(mainSource,/원문·정보 수정/,'resource detail exposes edit ac
 assert.match(mainSource,/id="resource-edit-form"/,'resource detail has edit form');
 assert.match(mainSource,/api\.updateResource\(id, form\)/,'resource edits are persisted');
 assert.match(mainSource,/function bindNoteActions\(\)/,'note actions share one event binder');
+assert.match(mainSource,/function noteTypeOptions\(/,'note type choices use one shared renderer');
+assert.match(mainSource,/note-type-manage-toggle/,'notes expose custom type management');
+assert.match(apiSource,/export async function createNoteType/,'custom note types can be created');
+assert.match(apiSource,/export async function deleteNoteType/,'custom note types can be removed');
 assert.match(mainSource,/api\.updateNote\(/,'notes can be edited');
 assert.match(mainSource,/api\.deleteNote\(/,'notes can be deleted');
 assert.match(mainSource,/data-note-record-edit/,'full note records expose edit controls');
