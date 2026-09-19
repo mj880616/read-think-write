@@ -51,6 +51,7 @@ function navigate(path) {
     window.dispatchEvent(new CustomEvent('rtw:navigate-records'));
     return;
   }
+  window.dispatchEvent(new CustomEvent('rtw:leave-records'));
   render();
 }
 
