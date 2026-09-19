@@ -48,9 +48,10 @@ function href(path) {
 function navigate(path) {
   history.pushState({}, '', href(path));
   if (path === '/records/' || path === '/records') {
-    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.dispatchEvent(new CustomEvent('rtw:navigate-records'));
     return;
   }
+  window.dispatchEvent(new CustomEvent('rtw:leave-records'));
   render();
 }
 
