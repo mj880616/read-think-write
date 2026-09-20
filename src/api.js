@@ -185,10 +185,10 @@ export async function createNote({ body, note_type = null, resource_id = null },
   return data;
 }
 
-export async function updateNote(id, body) {
+export async function updateNote(id, body, noteType) {
   const { data, error } = await supabase
     .from('rtw_notes')
-    .update({ body: body.trim(), updated_at: new Date().toISOString() })
+    .update({ body: body.trim(), note_type: noteType || null, updated_at: new Date().toISOString() })
     .eq('id', id)
     .select()
     .single();

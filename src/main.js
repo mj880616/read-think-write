@@ -184,9 +184,21 @@ function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const
 const DEFAULT_NOTE_TYPES = ['생각','질문','좋은 문장','반론','글감','업무 연결'];
 
 function noteTypeOptions(selected = '') {
-  const names = [...DEFAULT_NOTE_TYPES, ...state.noteTypes.map((item) => item.name)]
+  const names = [...DEFAULT_NOTE_TYPES, ...state.noteTypes.map((item) => item.name), selected]
+    .filter(Boolean)
     .filter((name, index, all) => all.indexOf(name) === index);
   return '<option value="">분류 안 함</option>' + names.map((name) => `<option value="${esc(name)}" ${name === selected ? 'selected' : ''}>${esc(name)}</option>`).join('');
+}
+
+function showNoteError(error, status, action = '저장') {
+  console.error(`메모 ${action} 실패`, error);
+  const message = `메모를 ${action}하지 못했습니다. 다시 시도해주세요.`;
+  if (status) {
+    status.textContent = message;
+    status.classList.add('error');
+  } else {
+    alert(message);
+  }
 }
 
 function noteParts(note) {
@@ -215,7 +227,7 @@ function noteItem(note) {
     </div>
     <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
     <div class="note-actions" data-note-actions="${note.id}" hidden><button type="button" data-note-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
-    <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div></form>
+    <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions(note.note_type || '')}</select></div><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div><div class="status" aria-live="polite"></div></form>
   </div>`;
 }
 
@@ -255,16 +267,28 @@ function bindNoteActions() {
     const stillCurrent = currentViewGuard();
     const body = form.querySelector('textarea')?.value.trim() || '';
     if (!body) return;
-    await api.updateNote(form.dataset.noteEditForm, body);
-    if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
-    await rerenderCurrentView();
+    const status = form.querySelector('.status');
+    if (status) status.textContent = '저장 중…';
+    try {
+      await api.updateNote(form.dataset.noteEditForm, body, new FormData(form).get('note_type'));
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
+      await rerenderCurrentView();
+    } catch (error) {
+      if (!stillCurrent()) return;
+      showNoteError(error, status);
+    }
   }));
   document.querySelectorAll('[data-note-delete]').forEach((button) => button.addEventListener('click', async () => {
     if (!confirm('이 메모를 삭제할까요?')) return;
     const stillCurrent = currentViewGuard();
-    await api.deleteNote(button.dataset.noteDelete);
-    if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
-    await rerenderCurrentView();
+    try {
+      await api.deleteNote(button.dataset.noteDelete);
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
+      await rerenderCurrentView();
+    } catch (error) {
+      if (!stillCurrent()) return;
+      showNoteError(error, null, '삭제');
+    }
   }));
 }
 async function rerenderCurrentView() {
@@ -521,7 +545,29 @@ async function resourceDetailView(id) {
     }
   }
 
-  document.querySelector('#save-selection-note')?.addEventListener('click',async()=>{if(!pending)return;const stillCurrent=currentViewGuard();const memo=prompt('선택한 문장에 남길 메모를 입력하세요.');if(memo===null)return;const clean=memo.trim();if(!clean)return;await api.createNote({body:`> ${pending.text.replace(/\n/g,'\n> ')}\n\n${clean}`,note_type:'생각',resource_id:id},user.id);if(!stillCurrent())return;pop.hidden=true;window.getSelection()?.removeAllRanges();if(!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
+  document.querySelector('#save-selection-note')?.addEventListener('click', async () => {
+    if (!pending) return;
+    const stillCurrent = currentViewGuard();
+    const memo = prompt('선택한 문장에 남길 메모를 입력하세요.');
+    if (memo === null) return;
+    const clean = memo.trim();
+    if (!clean) return;
+    try {
+      await api.createNote({
+        body: `> ${pending.text.replace(/\n/g, '\n> ')}\n\n${clean}`,
+        note_type: DEFAULT_NOTE_TYPES[0],
+        resource_id: id
+      }, user.id);
+      if (!stillCurrent()) return;
+      pop.hidden = true;
+      window.getSelection()?.removeAllRanges();
+      if (!await refreshState() || !stillCurrent()) return;
+      resourceDetailView(id);
+    } catch (error) {
+      if (!stillCurrent()) return;
+      showNoteError(error);
+    }
+  });
 
   const editCard = document.querySelector('#resource-edit-card');
   document.querySelector('#resource-edit-toggle')?.addEventListener('click', () => {
@@ -557,8 +603,8 @@ async function resourceDetailView(id) {
       if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       resourceDetailView(id);
     } catch (error) {
-      status.textContent = error.message;
-      status.classList.add('error');
+      if (!stillCurrent()) return;
+      showNoteError(error, status);
     }
   });
 }
@@ -599,7 +645,7 @@ async function notesView() {
             <div class="note-body">${esc(note.body).replace(/\n/g, '<br>')}</div>
             <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleString('ko-KR')}</div>
             <div class="note-record-actions"><button type="button" data-note-record-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
-            <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-record-cancel="${note.id}">취소</button></div></form>
+    <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions(note.note_type || '')}</select></div><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-record-cancel="${note.id}">취소</button></div><div class="status" aria-live="polite"></div></form>
             <div class="note-links"><h3>이 메모 연결하기</h3>${relationManager('note', note.id, relations)}</div>
           </details>`;
         }).join('') || empty('독립 메모가 아직 없음')}
@@ -622,14 +668,22 @@ async function notesView() {
       if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       notesView();
     } catch (error) {
-      alert(error.code === '23505' ? '이미 있는 성격입니다.' : error.message);
+      if (!stillCurrent()) return;
+      console.error('메모 유형 추가 실패', error);
+      alert(error.code === '23505' ? '이미 있는 유형입니다.' : '유형을 추가하지 못했습니다. 다시 시도해주세요.');
     }
   });
   document.querySelectorAll('[data-delete-note-type]').forEach((button) => button.addEventListener('click', async () => {
     const stillCurrent = currentViewGuard();
-    await api.deleteNoteType(button.dataset.deleteNoteType);
-    if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
-    notesView();
+    try {
+      await api.deleteNoteType(button.dataset.deleteNoteType);
+      if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
+      notesView();
+    } catch (error) {
+      if (!stillCurrent()) return;
+      console.error('메모 유형 삭제 실패', error);
+      alert('유형을 삭제하지 못했습니다. 다시 시도해주세요.');
+    }
   }));
   document.querySelectorAll('[data-note-record-edit]').forEach((button) => button.addEventListener('click', () => {
     const record = button.closest('[data-note-record]');
@@ -652,8 +706,8 @@ async function notesView() {
       if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       notesView();
     } catch (error) {
-      status.textContent = error.message;
-      status.classList.add('error');
+      if (!stillCurrent()) return;
+      showNoteError(error, status);
     }
   });
 }
@@ -773,7 +827,7 @@ async function archiveView(year = '2026') {
             <h3>나의 메모</h3>
             <form class="form archive-note-form" data-resource-id="${resource.id}">
               <div class="field"><textarea name="body" required placeholder="이 글을 읽고 남은 생각…"></textarea></div>
-              <div class="field"><label>성격 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
+              <div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
               <button class="btn small">메모 저장</button><div class="status"></div>
             </form>
             <div class="stack archive-saved-notes">${notes.map(noteItem).join('') || empty('이 글에 남긴 메모가 아직 없음')}</div>
@@ -805,8 +859,8 @@ async function archiveView(year = '2026') {
         if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
         archiveView(year);
       } catch (error) {
-        status.textContent = error.message;
-        status.classList.add('error');
+        if (!stillCurrent()) return;
+        showNoteError(error, status);
       }
     });
   });
