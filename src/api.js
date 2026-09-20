@@ -70,7 +70,7 @@ export async function signOut() {
   fail(error);
 }
 
-export const AI_DAILY_LIMITS = Object.freeze({ read: 20, expand: 10, recommend: 10 });
+export const AI_DAILY_LIMITS = Object.freeze({ read: 3, expand: 3 });
 
 export async function getBetaAccess(email) {
   const clean = String(email || '').trim().toLowerCase();
@@ -124,7 +124,7 @@ export async function removeBetaEmail(email) {
 export async function getAiUsageToday() {
   const { data, error } = await supabase.rpc('rtw_ai_usage_today');
   fail(error);
-  const counts = { read: 0, expand: 0, recommend: 0 };
+  const counts = { read: 0, expand: 0 };
   for (const row of data ?? []) {
     if (Object.prototype.hasOwnProperty.call(counts, row.action)) counts[row.action] = Number(row.count || 0);
   }
