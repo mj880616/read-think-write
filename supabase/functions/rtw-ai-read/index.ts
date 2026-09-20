@@ -30,6 +30,15 @@ async function userOf(req: Request) {
   return data.user;
 }
 
+async function requireBetaAccess(user: any) {
+  const email = String(user?.email || '').trim().toLowerCase();
+  if (!email) throw new Error('Google 계정 이메일을 확인할 수 없습니다.');
+  const { data, error } = await admin.from('rtw_beta_access').select('role').eq('email', email).eq('active', true).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('현재 무료 베타는 초대된 계정만 이용할 수 있습니다.');
+  return data;
+}
+
 function outputText(response: any) {
   for (const item of response.output || []) {
     if (item.type !== 'message') continue;
@@ -68,6 +77,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
     const user = await userOf(req);
+    await requireBetaAccess(user);
     const input = await req.json();
     const resourceId = String(input?.resource_id || '').trim();
     const mode = input?.mode === 'expand' ? 'expand' : 'read';
@@ -85,6 +95,13 @@ Deno.serve(async (req: Request) => {
     const body = String(resource.body_md || '').trim();
     if (body.length < 80) {
       throw new Error('분석할 본문이 충분하지 않습니다. 먼저 본문을 붙여넣거나 수정하세요.');
+    }
+
+    const quotaLimit = mode === 'expand' ? 10 : 20;
+    const { error: quotaError } = await admin.rpc('rtw_consume_ai_quota', { p_owner_id: user.id, p_action: mode, p_limit: quotaLimit });
+    if (quotaError) {
+      if (quotaError.message.includes('daily_ai_limit_reached')) throw new Error(`오늘의 ${mode === 'expand' ? '생각 확장' : 'AI 읽기'} 횟수를 모두 사용했습니다.`);
+      throw quotaError;
     }
 
     const [{ data: topics, error: topicsError }, { data: questions, error: questionsError }] = await Promise.all([
