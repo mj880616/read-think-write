@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="읽생기">
+  <rect width="64" height="64" rx="14" fill="#F7F2E8"/>
+  <g fill="none" stroke="#235C49" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="17" y="13.5" width="28" height="37" rx="4.5" stroke-width="5"/>
+    <path d="M12.5 20.5h9M12.5 28h9M12.5 35.5h9" stroke-width="4.5"/>
+    <path d="M26 25h12M26 32h10" stroke-width="4"/>
+    <path d="M33.5 46.5 49 31l5 5-15.5 15.5-7 2z" stroke-width="4.5"/>
+  </g>
+</svg>
