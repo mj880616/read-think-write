@@ -80,6 +80,7 @@ function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getRe
   const topicForm = element();
   const relationToggle = element();
   const retryResource = element();
+  const logoutButton = element();
   relationToggle.dataset = { sourceType: 'resource', sourceId: A, targetType: 'topic', targetId: A };
   let html = '';
   const root = element();
@@ -88,7 +89,7 @@ function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getRe
     set(value) { html = value; output.innerHTML = ''; }
   });
   const document = {
-    querySelector(selector) { return ({ '#app': root, '#search-input': input, '#search-results': output, '#login-form': loginForm, '#topic-form': topicForm, '#retry-resource': retryResource })[selector] ?? element(); },
+    querySelector(selector) { return ({ '#app': root, '#search-input': input, '#search-results': output, '#login-form': loginForm, '#topic-form': topicForm, '#retry-resource': retryResource, '[data-logout]': logoutButton })[selector] ?? element(); },
     querySelectorAll: (selector) => selector === '[data-relation-toggle]' ? [relationToggle] : [],
     addEventListener: noop
   };
@@ -101,7 +102,7 @@ function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getRe
   return {
     ...app,
     get state() { return app.state; }, get html() { return html; },
-    location, input, output, loginForm, topicForm, relationToggle, retryResource, reads, ownerChecks, alerts,
+    location, input, output, loginForm, topicForm, relationToggle, retryResource, logoutButton, reads, ownerChecks, alerts,
     async settle() { for (let i = 0; i < 8; i++) await new Promise((resolve) => setImmediate(resolve)); },
     signIn(id) { current = { id, email: `${id}@example.com` }; listeners.forEach((fn) => fn('SIGNED_IN', { user: current })); },
     authEvent(event, id) { current = { id, email: `${id}@example.com` }; listeners.forEach((fn) => fn(event, { user: current })); },
@@ -243,6 +244,21 @@ test('late A refresh cannot replace B state or redraw after logout', async () =>
   app.signOut();
   assert.equal(app.state.resources.length, 0);
   assert.doesNotMatch(app.html, /B resource/);
+});
+
+test('logout control signs out, clears user data and returns to the login view', async () => {
+  const app = harness();
+  app.signIn(A); await app.settle();
+  assert.match(app.html, /A resource/);
+  assert.equal(typeof app.logoutButton.listeners.click, 'function');
+
+  app.logoutButton.emit('click', { currentTarget: app.logoutButton });
+  await app.settle();
+
+  assert.equal(app.state.resources.length, 0);
+  assert.equal(app.state.notes.length, 0);
+  assert.match(app.html, /로그인|Google로 로그인/);
+  assert.doesNotMatch(app.html, /A resource|A note|A question/);
 });
 
 test('logout discards A refresh even when the A response arrives afterward', async () => {

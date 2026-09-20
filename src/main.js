@@ -103,7 +103,8 @@ function shell(content, active = 'home') {
 ${PRIMARY_TABS.map(tab => routeLink(tab.label, tab.path, active === tab.key)).join('')}
       </nav>
       <div class="userbar">
-        <span>${esc(user?.email || '')}</span>
+        <span class="user-email">${esc(user?.email || '')}</span>
+        <button class="logout-link" type="button" data-logout>로그아웃</button>
       </div>
     </header>
     <main class="page">${content}</main>
@@ -118,6 +119,19 @@ function bindCommon() {
     });
   });
 
+  document.querySelector('[data-logout]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = '로그아웃 중…';
+    try {
+      await api.signOut();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = '로그아웃';
+      console.error('로그아웃 실패', error);
+      alert('로그아웃하지 못했습니다. 다시 시도해주세요.');
+    }
+  });
 }
 
 async function refreshState() {
