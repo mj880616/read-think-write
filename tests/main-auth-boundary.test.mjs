@@ -125,7 +125,7 @@ test('direct A to B transition clears all user state and the A home immediately'
   assert.doesNotMatch(app.html, /A resource|A note|A question/);
   await app.settle();
   assert.match(app.html, /B resource/);
-  assert.deepEqual(app.ownerChecks, [A, B]);
+  assert.deepEqual(app.ownerChecks, []);
 });
 
 test('A search results disappear on B transition and B search uses B data', async () => {
@@ -292,7 +292,7 @@ test('same-user auth event keeps state and avoids owner check and reload', async
   app.signIn(A); await app.settle();
   assert.equal(app.state, state);
   assert.equal(app.reads.length, reads);
-  assert.deepEqual(app.ownerChecks, [A]);
+  assert.deepEqual(app.ownerChecks, []);
 });
 
 test('same-user INITIAL_SESSION and TOKEN_REFRESHED keep state without reload', async () => {
@@ -305,29 +305,28 @@ test('same-user INITIAL_SESSION and TOKEN_REFRESHED keep state without reload', 
   await app.settle();
   assert.equal(app.state, state);
   assert.equal(app.reads.length, reads);
-  assert.deepEqual(app.ownerChecks, [A]);
+  assert.deepEqual(app.ownerChecks, []);
 });
 
-test('personal owner check runs for B before B data is loaded and rejects unauthorized B', async () => {
-  const app = harness({ ownerAllowed: (id) => id === A });
+test('a second authenticated user loads only their own data without a personal-owner gate', async () => {
+  const app = harness({ ownerAllowed: () => false });
   app.signIn(A); await app.settle();
   app.signIn(B); await app.settle();
-  assert.deepEqual(app.ownerChecks, [A, B]);
-  assert.equal(app.reads.filter((read) => read.id === B).length, 0);
-  assert.match(app.html, /개인용 읽생기/);
-  assert.doesNotMatch(app.html, /A resource|B resource/);
+  assert.deepEqual(app.ownerChecks, []);
+  assert.ok(app.reads.some((read) => read.id === B));
+  assert.match(app.html, /B resource/);
+  assert.doesNotMatch(app.html, /A resource|개인용 읽생기/);
 });
 
-test('form login checks personal ownership before reading the new account', async () => {
+test('form login loads the signed-in user without a personal-owner gate', async () => {
   const app = harness({ ownerAllowed: () => false });
   await app.settle();
   app.loginForm.values = { email: 'b@example.com', password: 'secret' };
   app.loginForm.emit('submit', { preventDefault() {}, currentTarget: app.loginForm });
   await app.settle();
-  assert.deepEqual(app.ownerChecks, [B]);
-  assert.equal(app.reads.length, 0);
-  assert.match(app.html, /개인용 읽생기/);
-  assert.doesNotMatch(app.html, /B resource/);
+  assert.deepEqual(app.ownerChecks, []);
+  assert.ok(app.reads.some((read) => read.id === B));
+  assert.match(app.html, /B resource/);
 });
 
 test('a late A mutation cannot replace the B home with the old form view', async () => {
