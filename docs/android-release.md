@@ -8,7 +8,7 @@
 
 ## 현재 단계
 
-2단계: Android TWA 앱 골격 제작.
+3단계: 실기기 설치용 debug APK 생성 및 휴대폰 검증 준비.
 
 ## 확정된 결정
 
@@ -37,15 +37,18 @@
 - 임시 앱 아이콘/색상/테마 추가
 - 웹 앱 manifest 추가
 - assetlinks 템플릿 준비
+- GitHub Actions에서 debug APK 자동 생성
+- 생성된 debug APK를 14일간 Actions artifact로 보관
+- 웹 회귀 테스트 / Pages 배포 / Android build 자동검사 통과 구조 확보
 
 ## 아직 필요한 항목
 
-1. CI에서 Android debug build 검증
-2. release signing key 생성 및 안전한 보관
-3. signing SHA-256 fingerprint 확보
-4. 실제 `/.well-known/assetlinks.json` 배포
-5. 실기기 APK 설치 테스트
-6. Google 로그인 앱 환경 검증
+1. 생성된 debug APK를 실제 Android 휴대전화에 설치
+2. 앱 실행/뒤로가기/외부링크/로그인 흐름 실기기 확인
+3. release signing key 생성 및 안전한 보관
+4. signing SHA-256 fingerprint 확보
+5. 실제 `/.well-known/assetlinks.json` 배포
+6. TWA 전체화면 검증
 7. Android 공유 → 읽생기 URL 가져오기
 8. 개인정보처리방침/지원 페이지
 9. Google Play 개발자 등록
@@ -72,7 +75,7 @@
 
 ## 진행률
 
-약 12%.
+약 16%.
 
 ## 남은 예상 비용
 
