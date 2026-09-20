@@ -1,0 +1,12 @@
+{
+  "appId": "com.bokdoong.read.captest",
+  "appName": "읽생기",
+  "webDir": "www",
+  "server": {
+    "url": "https://read.bokdoong.com",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
