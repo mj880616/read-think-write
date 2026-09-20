@@ -27,7 +27,7 @@ const SWIPE_TABS = [
 ];
 let user = null;
 let authEpoch = 0;
-let ownerVerifiedId = null;
+let dataReadyUserId = null;
 let state = emptyUserState();
 
 function emptyUserState() {
@@ -57,7 +57,7 @@ function setAuthUser(next) {
   }
   authEpoch += 1;
   user = next;
-  ownerVerifiedId = null;
+  dataReadyUserId = null;
   clearUserState();
   root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
   return true;
@@ -123,7 +123,7 @@ function bindCommon() {
 async function refreshState() {
   const userId = user?.id;
   const epoch = authEpoch;
-  if (!userId || ownerVerifiedId !== userId) return false;
+  if (!userId || dataReadyUserId !== userId) return false;
   const [resources, notes, topics, questions, bookmarks, noteTypes] = await Promise.all([
     api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks(), api.listNoteTypes()
   ]);
@@ -450,7 +450,7 @@ async function resourceDetailView(id) {
   const userId = user?.id;
   const epoch = authEpoch;
   const route = pathFromLocation();
-  if (!userId || ownerVerifiedId !== userId) return;
+  if (!userId || dataReadyUserId !== userId) return;
   let resource, notes, relations, bookmarks;
   try {
     resource = state.resources.find((item) => item.id === id) || await api.getResource(id);
@@ -650,7 +650,7 @@ async function notesView() {
   const userId = user?.id;
   const epoch = authEpoch;
   const route = pathFromLocation();
-  if (!userId || ownerVerifiedId !== userId) return;
+  if (!userId || dataReadyUserId !== userId) return;
   const independent = state.notes.filter((note) => !note.resource_id);
   const relationPairs = await Promise.all(independent.map(async (note) => [note.id, await api.listRelations('note', note.id)]));
   if (!isCurrentRequest(userId, epoch, route)) return;
@@ -854,7 +854,7 @@ async function topicDetailView(id) {
   const userId = user?.id;
   const epoch = authEpoch;
   const route = pathFromLocation();
-  if (!userId || ownerVerifiedId !== userId) return;
+  if (!userId || dataReadyUserId !== userId) return;
   const topic = state.topics.find((item) => item.id === id);
   if (!topic) return notFound();
   const relations = await api.listRelationsByTarget('topic', id);
@@ -875,7 +875,7 @@ async function questionDetailView(id) {
   const userId = user?.id;
   const epoch = authEpoch;
   const route = pathFromLocation();
-  if (!userId || ownerVerifiedId !== userId) return;
+  if (!userId || dataReadyUserId !== userId) return;
   const question = state.questions.find((item) => item.id === id);
   if (!question) return notFound();
   const relations = await api.listRelationsByTarget('question', id);
@@ -999,22 +999,12 @@ async function render() {
     setAuthUser(current);
   }
 
-  if (ownerVerifiedId !== user.id) {
+  if (dataReadyUserId !== user.id) {
     const userId = user.id;
     const epoch = authEpoch;
     root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
-    const owner = await api.isPersonalOwner();
     if (!isCurrentRequest(userId, epoch)) return;
-    if (!owner) {
-      setAuthUser(null);
-      const deniedEpoch = authEpoch;
-      await api.signOut().catch(() => {});
-      // signOut can emit one more null auth event after the local clear.
-      if (user || authEpoch > deniedEpoch + 1) return;
-      root.innerHTML = '<div class="shell login-wrap"><section class="login"><div class="eyebrow">Personal knowledge archive</div><h1>개인용 읽생기</h1><p class="muted">현재 이 읽생기는 개인용으로 운영 중입니다.</p></section></div>';
-      return;
-    }
-    ownerVerifiedId = userId;
+    dataReadyUserId = userId;
     if (!await refreshState()) return;
   }
 
