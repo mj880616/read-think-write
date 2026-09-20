@@ -1335,10 +1335,16 @@ supabase.auth.onAuthStateChange((_event, session) => {
     loginView();
     return;
   }
-  if (setAuthUser(next)) {
+
+  if (!setAuthUser(next)) return;
+
+  // Supabase warns against starting another Supabase request directly inside
+  // onAuthStateChange. Native OAuth emits SIGNED_IN without a page reload, so
+  // render() must run outside this callback to avoid auth/query deadlocks.
+  setTimeout(() => {
     if (next) render();
     else loginView();
-  }
+  }, 0);
 });
 
 render();
