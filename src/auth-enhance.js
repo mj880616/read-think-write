@@ -72,3 +72,17 @@ supabase.auth.onAuthStateChange(() => {
 
 addGoogleLoginButton();
 prepareSignedInUser();
+
+globalThis.addEventListener('rtw:native-oauth-error', (event) => {
+  const login = document.querySelector('.login');
+  const status = login?.querySelector('#login-status');
+  const button = login?.querySelector('#google-login');
+  if (button) {
+    button.disabled = false;
+    button.textContent = 'Google로 로그인';
+  }
+  if (status) {
+    status.textContent = event.detail?.message || 'Google 로그인에 실패했습니다.';
+    status.classList.add('error');
+  }
+});
