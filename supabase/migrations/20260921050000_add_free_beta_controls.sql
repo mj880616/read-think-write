@@ -156,3 +156,53 @@ alter table public.rtw_ai_usage
 alter table public.rtw_ai_usage
   add constraint rtw_ai_usage_action_check
   check (action = any(array['recommend'::text,'read'::text,'expand'::text]));
+
+
+-- Quota consumption is server-only. Reset on the Korea calendar day.
+create or replace function public.rtw_consume_ai_quota(p_owner_id uuid, p_action text, p_limit integer)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_count integer;
+  v_day date := (now() at time zone 'Asia/Seoul')::date;
+begin
+  if p_owner_id is null or p_action not in ('recommend','read','expand') or p_limit < 1 then
+    raise exception 'invalid quota request';
+  end if;
+
+  insert into public.rtw_ai_usage(owner_id,usage_day,action,count)
+  values(p_owner_id,v_day,p_action,1)
+  on conflict(owner_id,usage_day,action) do update
+    set count=public.rtw_ai_usage.count+1,updated_at=now()
+    where public.rtw_ai_usage.count < p_limit
+  returning count into v_count;
+
+  if v_count is null then
+    raise exception 'daily_ai_limit_reached';
+  end if;
+  return v_count;
+end;
+$$;
+
+revoke all on function public.rtw_consume_ai_quota(uuid,text,integer) from public, anon, authenticated;
+grant execute on function public.rtw_consume_ai_quota(uuid,text,integer) to service_role;
+
+create or replace function public.rtw_ai_usage_today()
+returns table(action text, count integer)
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select u.action, u.count
+  from public.rtw_ai_usage u
+  where u.owner_id = auth.uid()
+    and u.usage_day = (now() at time zone 'Asia/Seoul')::date
+  order by u.action
+$$;
+
+revoke all on function public.rtw_ai_usage_today() from public, anon;
+grant execute on function public.rtw_ai_usage_today() to authenticated;
