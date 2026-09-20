@@ -2,9 +2,24 @@ plugins {
     id 'com.android.application'
 }
 
+def testKeystore = file('readsaenggi-test.keystore')
+def encodedTestKeystore = file('../test-signing/readsaenggi-test.keystore.b64')
+if (!testKeystore.exists() && encodedTestKeystore.exists()) {
+    testKeystore.bytes = encodedTestKeystore.text.trim().decodeBase64()
+}
+
 android {
     namespace 'com.bokdoong.read'
     compileSdk 36
+
+    signingConfigs {
+        twaTest {
+            storeFile testKeystore
+            storePassword 'android'
+            keyAlias 'readsaenggi-test'
+            keyPassword 'android'
+        }
+    }
 
     defaultConfig {
         applicationId 'com.bokdoong.read'
@@ -12,6 +27,14 @@ android {
         targetSdk 36
         versionCode 1
         versionName '0.1.0'
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+            signingConfig signingConfigs.twaTest
+        }
     }
 
     compileOptions {
