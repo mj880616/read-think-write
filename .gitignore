@@ -8,3 +8,5 @@ android/local.properties
 *.keystore
 keystore.properties
 android/signing.properties
+
+android/app/readsaenggi-test.keystore
