@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "test": "node tests/model.test.mjs && node tests/url-policy.test.mjs && node tests/body-extraction.test.mjs && node tests/date-extraction.test.mjs && node tests/records-session-cache.test.mjs && node tests/main-auth-boundary.test.mjs && node tests/note-types.test.mjs && node tests/mobile-tab-swipe.test.mjs && node tests/bookmark-location.test.mjs"
+    "test": "node tests/model.test.mjs && node tests/url-policy.test.mjs && node tests/body-extraction.test.mjs && node tests/date-extraction.test.mjs && node tests/records-session-cache.test.mjs && node tests/main-auth-boundary.test.mjs && node tests/note-types.test.mjs && node tests/mobile-tab-swipe.test.mjs && node tests/bookmark-location.test.mjs && node tests/mobile-oauth.test.mjs"
   }
 }
