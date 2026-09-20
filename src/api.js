@@ -96,9 +96,19 @@ export async function listBetaAccess() {
 export async function inviteBetaEmail(email, note = '') {
   const clean = String(email || '').trim().toLowerCase();
   if (!clean || !clean.includes('@')) throw new Error('이메일 주소를 확인하세요.');
+  const cleanNote = String(note || '').trim() || null;
+  const { data: existing, error: updateError } = await supabase
+    .from('rtw_beta_access')
+    .update({ active: true, note: cleanNote })
+    .eq('email', clean)
+    .select('email,role,active,invited_at,note')
+    .maybeSingle();
+  fail(updateError);
+  if (existing) return existing;
+
   const { data, error } = await supabase
     .from('rtw_beta_access')
-    .upsert({ email: clean, role: 'user', active: true, note: String(note || '').trim() || null }, { onConflict: 'email' })
+    .insert({ email: clean, role: 'user', active: true, note: cleanNote })
     .select('email,role,active,invited_at,note')
     .single();
   fail(error);
