@@ -114,3 +114,18 @@
 - 공식 Android Browser Helper 예제와 비교해 Launcher theme를 AppCompat NoActionBar 계열로 변경.
 - 삼성 인터넷 등 다른 Custom Tabs provider 선택 가능성을 제거하기 위해 테스트판은 Google Chrome(com.android.chrome)을 명시적으로 사용.
 - 이 테스트가 실패하면 TWA 방식은 중단하고 다른 Android 래핑 방식으로 전환.
+
+
+## 아키텍처 전환 결정: TWA → Capacitor
+
+- 실기기에서 일반 Android 진단 런처는 정상 실행됨.
+- 반면 TWA LauncherActivity 기반 APK는 여러 차례 반복해 실행 실패함.
+- Digital Asset Links, 고정 테스트 서명, Chrome 강제, AppCompat 테마까지 검증했으나 실기기 실행 실패가 지속됨.
+- 동일 경로를 반복하는 것은 기술부채와 일정 손실이 크다고 판단해 TWA를 중단함.
+- 기존 TWA 코드는 참고용으로 남기되 활성 Android 경로는 `mobile/` Capacitor 프로젝트로 전환함.
+- 1차 Capacitor 검증은 `read.bokdoong.com`을 앱 내부 WebView에서 여는 최소 셸만 구성함.
+- 이 테스트가 성공하면 Google 로그인과 Android 공유 기능을 Capacitor/네이티브 방식으로 이어서 구현함.
+
+## 현재 진행률
+
+약 20%. TWA 실패로 진도가 늦어졌지만 Android 패키지 정상 여부는 이미 확인했고, 앱 래핑 방식을 전환한 상태임.
