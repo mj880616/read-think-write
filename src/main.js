@@ -13,7 +13,7 @@ const PRIMARY_TABS = [
   { key: 'home', label: '홈', path: '/' },
   { key: 'read', label: '읽기', path: '/read/' },
   { key: 'bookmarks', label: '책갈피', path: '/bookmarks/' },
-  { key: 'notes', label: '생각', path: '/notes/' },
+  { key: 'notes', label: '메모', path: '/notes/' },
   { key: 'topics', label: '주제', path: '/topics/' },
   { key: 'questions', label: '질문', path: '/questions/' },
   { key: 'archive', label: '아카이브', path: '/archive/2026/' },
@@ -35,6 +35,7 @@ function emptyUserState() {
 
 function clearUserState() {
   state = emptyUserState();
+  selectedNoteTypeFilter = '';
 }
 
 function isCurrentRequest(userId, epoch, route) {
@@ -182,12 +183,20 @@ function bindResourceBookmarkButtons(){document.querySelectorAll('[data-resource
 function bookmarkView(){const rm=new Map(state.resources.map(r=>[r.id,r]));const items=state.bookmarks.map(b=>({b,r:rm.get(b.resource_id)})).filter(x=>x.r);root.innerHTML=shell(`<section class="hero bookmark-hero"><div class="eyebrow">책갈피</div><h1>다시 볼 곳</h1><p>다시 보고 싶은 글과 문장을 한곳에서 찾는다.</p></section><section class="card bookmark-section bookmark-unified"><div class="bookmark-index">${items.map(({b,r})=>b.bookmark_type==='resource'?`<div class="bookmark-index-row"><a class="bookmark-index-main" href="${href('/read/'+r.id+'/')}" data-nav="/read/${r.id}/"><span class="bookmark-kind">글</span><span class="bookmark-index-title">${esc(r.author||r.source_name||'')}${(r.author||r.source_name)?' · ':''}${esc(r.title)}</span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`:`<div class="bookmark-index-row"><a class="bookmark-index-main bookmark-index-passage" href="${href('/read/'+b.resource_id+'/?bookmark='+encodeURIComponent(b.id))}" data-passage-bookmark="${b.id}"><span class="bookmark-kind">문장</span><span class="bookmark-index-copy"><strong class="bookmark-index-context">${esc(r.title)}</strong><span class="bookmark-index-text">“${esc(b.selected_text||'')}”</span></span></a><button class="bookmark-index-delete" data-delete-bookmark="${b.id}" type="button" aria-label="책갈피 삭제" title="삭제">×</button></div>`).join('')||empty('아직 책갈피가 없음')}</div></section>`,'bookmarks');bindCommon();document.querySelectorAll('[data-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);render();}));document.querySelectorAll('[data-delete-bookmark]').forEach(x=>x.addEventListener('click',async()=>{const stillCurrent=currentViewGuard();await api.deleteBookmark(x.dataset.deleteBookmark);if(!stillCurrent()||!await refreshState()||!stillCurrent())return;bookmarkView();}));}
 
 const DEFAULT_NOTE_TYPES = ['생각','질문','좋은 문장','반론','글감','업무 연결'];
+let selectedNoteTypeFilter = '';
 
-function noteTypeOptions(selected = '') {
-  const names = [...DEFAULT_NOTE_TYPES, ...state.noteTypes.map((item) => item.name), selected]
+function noteTypeNames(selected = '', includeSaved = false) {
+  return [...DEFAULT_NOTE_TYPES, ...state.noteTypes.map((item) => item.name), ...(includeSaved ? state.notes.map((note) => note.note_type) : []), selected]
     .filter(Boolean)
     .filter((name, index, all) => all.indexOf(name) === index);
-  return '<option value="">분류 안 함</option>' + names.map((name) => `<option value="${esc(name)}" ${name === selected ? 'selected' : ''}>${esc(name)}</option>`).join('');
+}
+
+function noteTypeOptions(selected = '') {
+  return '<option value="">유형 없음</option>' + noteTypeNames(selected).map((name) => `<option value="${esc(name)}" ${name === selected ? 'selected' : ''}>${esc(name)}</option>`).join('');
+}
+
+function noteTypeBadge(name) {
+  return name ? `<span class="note-type-badge" title="${esc(name)}">${esc(name)}</span>` : '';
 }
 
 function showNoteError(error, status, action = '저장') {
@@ -218,14 +227,14 @@ function noteItem(note) {
   const hrefTarget = note.resource_id ? href('/read/' + note.resource_id + '/?note=' + encodeURIComponent(note.id)) : href('/notes/?note=' + encodeURIComponent(note.id));
   const quotePreview = esc(parts.quote).replace(/\n/g, ' ');
   const memoPreview = esc(parts.memo).replace(/\n/g, ' ');
-  return `<div class="item note-item ${parts.quoted ? 'note-item-quoted' : ''}" data-note-item="${note.id}">
+  return `<div class="item note-item ${parts.quoted ? 'note-item-quoted' : ''}" data-note-item="${note.id}" data-note-list-item data-note-type="${esc(note.note_type || '')}">
     <div class="note-item-head">
       <a class="note-item-link" data-note-display href="${hrefTarget}" data-note-target="${note.id}" data-note-resource="${note.resource_id || ''}">
         ${parts.quoted ? `<span class="note-quote-preview">${quotePreview.slice(0, 180)}${quotePreview.length > 180 ? '…' : ''}</span>${memoPreview ? `<span class="note-memo-preview">${memoPreview}</span>` : ''}` : `<span class="note-memo-preview">${memoPreview.slice(0, 180)}${memoPreview.length > 180 ? '…' : ''}</span>`}
       </a>
       <button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button>
     </div>
-    <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
+    <div class="meta">${noteTypeBadge(note.note_type)}${note.note_type ? ' · ' : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
     <div class="note-actions" data-note-actions="${note.id}" hidden><button type="button" data-note-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
     <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions(note.note_type || '')}</select></div><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div><div class="status" aria-live="polite"></div></form>
   </div>`;
@@ -272,6 +281,7 @@ function bindNoteActions() {
     try {
       await api.updateNote(form.dataset.noteEditForm, body, new FormData(form).get('note_type'));
       if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
+      selectedNoteTypeFilter = '';
       await rerenderCurrentView();
     } catch (error) {
       if (!stillCurrent()) return;
@@ -609,6 +619,23 @@ async function resourceDetailView(id) {
   });
 }
 
+function applyNoteTypeFilter() {
+  if (selectedNoteTypeFilter && !noteTypeNames('', true).includes(selectedNoteTypeFilter)) selectedNoteTypeFilter = '';
+  document.querySelectorAll('[data-note-filter]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.noteFilter === selectedNoteTypeFilter));
+  });
+  let shown = 0;
+  document.querySelectorAll('[data-note-list-item]').forEach((item) => {
+    item.hidden = Boolean(selectedNoteTypeFilter && item.dataset.noteType !== selectedNoteTypeFilter);
+    if (!item.hidden) shown += 1;
+  });
+  const emptyMessage = document.querySelector('#note-filter-empty');
+  if (emptyMessage) {
+    emptyMessage.hidden = shown > 0;
+    emptyMessage.textContent = selectedNoteTypeFilter ? '이 유형의 메모가 아직 없음' : '메모가 아직 없음';
+  }
+}
+
 async function notesView() {
   const userId = user?.id;
   const epoch = authEpoch;
@@ -620,7 +647,7 @@ async function notesView() {
   const relationMap = new Map(relationPairs.map(([noteId, relations]) => [`note:${noteId}`, relations]));
 
   root.innerHTML = shell(`
-    <section class="hero"><div class="eyebrow">생각</div><h1>메모</h1><p>기록하고, 연결한다.</p></section>
+    <section class="hero memo-hero"><h1>메모</h1><p>기록하고, 연결한다.</p></section>
     <div class="notes-layout">
       <section class="card">
         <h2>새 메모</h2>
@@ -633,28 +660,36 @@ async function notesView() {
           <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button">유형 관리</button>
           <div id="note-type-manager-panel" hidden>
             <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 유형"><button class="btn secondary small" type="submit">추가</button></form>
-            <div class="note-type-list">${state.noteTypes.map((item)=>`<span>${esc(item.name)} <button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">×</button></span>`).join('') || '<span class="muted">추가한 유형 없음</span>'}</div>
+            <div class="note-type-list">${state.noteTypes.map((item)=>`<div class="note-type-row"><span title="${esc(item.name)}">${esc(item.name)}</span><button type="button" data-note-type-edit="${item.id}" aria-label="${esc(item.name)} 이름 수정">수정</button><button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">삭제</button><form class="note-type-rename-form" data-note-type-rename="${item.id}" hidden><input name="name" value="${esc(item.name)}" maxlength="30" required aria-label="새 유형 이름"><button type="submit">저장</button><button type="button" data-note-type-cancel="${item.id}">취소</button></form></div>`).join('') || '<span class="muted">추가한 유형 없음</span>'}</div>
           </div>
         </div>
       </section>
       <section class="card">
         <h2>메모</h2>
-        ${independent.map((note) => {
+        <div class="note-type-filters" data-swipe-ignore role="group" aria-label="메모 유형 필터"><button type="button" data-note-filter="" aria-pressed="${!selectedNoteTypeFilter}">전체</button>${noteTypeNames('', true).map((name) => `<button type="button" data-note-filter="${esc(name)}" title="${esc(name)}" aria-pressed="${selectedNoteTypeFilter === name}">${esc(name)}</button>`).join('')}</div>
+        ${state.notes.map((note) => {
+          if (note.resource_id) return noteItem(note);
           const relations = relationMap.get(`note:${note.id}`) ?? [];
-          return `<details class="note-record" data-note-record="${note.id}"><summary>${esc(note.body).slice(0, 90)}${note.body.length > 90 ? '…' : ''}</summary>
+          return `<details class="note-record" data-note-record="${note.id}" data-note-list-item data-note-type="${esc(note.note_type || '')}"><summary>${noteTypeBadge(note.note_type)}<span>${esc(note.body).slice(0, 90)}${note.body.length > 90 ? '…' : ''}</span></summary>
             <div class="note-body">${esc(note.body).replace(/\n/g, '<br>')}</div>
-            <div class="meta">${note.note_type ? `${esc(note.note_type)} · ` : ''}${new Date(note.updated_at).toLocaleString('ko-KR')}</div>
+            <div class="meta">${new Date(note.updated_at).toLocaleString('ko-KR')}</div>
             <div class="note-record-actions"><button type="button" data-note-record-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
     <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions(note.note_type || '')}</select></div><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-record-cancel="${note.id}">취소</button></div><div class="status" aria-live="polite"></div></form>
             <div class="note-links"><h3>이 메모 연결하기</h3>${relationManager('note', note.id, relations)}</div>
           </details>`;
-        }).join('') || empty('독립 메모가 아직 없음')}
+        }).join('')}
+        <div id="note-filter-empty" class="empty" hidden></div>
       </section>
     </div>
   `, 'notes');
   bindCommon();
   bindNoteActions();
   bindRelationToggles(relationMap);
+  applyNoteTypeFilter();
+  document.querySelectorAll('[data-note-filter]').forEach((button) => button.addEventListener('click', () => {
+    selectedNoteTypeFilter = button.dataset.noteFilter;
+    applyNoteTypeFilter();
+  }));
   document.querySelector('#note-type-manage-toggle')?.addEventListener('click', () => {
     const panel = document.querySelector('#note-type-manager-panel');
     if (panel) panel.hidden = !panel.hidden;
@@ -662,7 +697,8 @@ async function notesView() {
   document.querySelector('#note-type-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const stillCurrent = currentViewGuard();
-    const name = new FormData(event.currentTarget).get('name');
+    const name = String(new FormData(event.currentTarget).get('name') || '').trim();
+    if (noteTypeNames('', true).includes(name)) { alert('이미 있는 유형입니다.'); return; }
     try {
       await api.createNoteType(name, user.id);
       if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
@@ -673,16 +709,49 @@ async function notesView() {
       alert(error.code === '23505' ? '이미 있는 유형입니다.' : '유형을 추가하지 못했습니다. 다시 시도해주세요.');
     }
   });
+  document.querySelectorAll('[data-note-type-edit]').forEach((button) => button.addEventListener('click', () => {
+    const form = document.querySelector(`[data-note-type-rename="${button.dataset.noteTypeEdit}"]`);
+    if (form) { form.hidden = false; form.querySelector('input')?.focus(); }
+  }));
+  document.querySelectorAll('[data-note-type-cancel]').forEach((button) => button.addEventListener('click', () => {
+    const form = document.querySelector(`[data-note-type-rename="${button.dataset.noteTypeCancel}"]`);
+    if (form) form.hidden = true;
+  }));
+  document.querySelectorAll('[data-note-type-rename]').forEach((form) => form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const stillCurrent = currentViewGuard();
+    const type = state.noteTypes.find((item) => item.id === form.dataset.noteTypeRename);
+    if (!type) return;
+    const name = String(new FormData(form).get('name') || '').trim();
+    if (name === type.name) { form.hidden = true; return; }
+    if (noteTypeNames('', true).includes(name)) { alert('이미 있는 유형입니다.'); return; }
+    try {
+      await api.renameNoteType(type.id, name);
+      if (!stillCurrent()) return;
+      if (selectedNoteTypeFilter === type.name) selectedNoteTypeFilter = name;
+      if (!await refreshState() || !stillCurrent()) return;
+      await notesView();
+    } catch (error) {
+      if (!stillCurrent()) return;
+      console.error('메모 유형 이름 수정 실패', error);
+      alert(error.code === '23505' ? '이미 있는 유형입니다.' : '유형 이름을 수정하지 못했습니다. 다시 시도해주세요.');
+    }
+  }));
   document.querySelectorAll('[data-delete-note-type]').forEach((button) => button.addEventListener('click', async () => {
+    const type = state.noteTypes.find((item) => item.id === button.dataset.deleteNoteType);
+    if (!type) return;
+    const used = state.notes.filter((note) => note.note_type === type.name).length;
+    if (used) { alert(`이 유형을 사용 중인 메모가 ${used}개 있습니다. 먼저 해당 메모의 유형을 변경하거나 제거해주세요.`); return; }
+    if (!confirm(`유형 '${type.name}'을 삭제할까요?`)) return;
     const stillCurrent = currentViewGuard();
     try {
-      await api.deleteNoteType(button.dataset.deleteNoteType);
+      await api.deleteNoteType(type.id);
       if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
       notesView();
     } catch (error) {
       if (!stillCurrent()) return;
       console.error('메모 유형 삭제 실패', error);
-      alert('유형을 삭제하지 못했습니다. 다시 시도해주세요.');
+      alert(error.code === '23503' ? '이 유형을 사용 중인 메모가 있습니다. 먼저 해당 메모의 유형을 변경하거나 제거해주세요.' : '유형을 삭제하지 못했습니다. 다시 시도해주세요.');
     }
   }));
   document.querySelectorAll('[data-note-record-edit]').forEach((button) => button.addEventListener('click', () => {
@@ -704,6 +773,7 @@ async function notesView() {
       const form = Object.fromEntries(new FormData(event.currentTarget));
       await api.createNote(form, user.id);
       if (!stillCurrent() || !await refreshState() || !stillCurrent()) return;
+      selectedNoteTypeFilter = '';
       notesView();
     } catch (error) {
       if (!stillCurrent()) return;

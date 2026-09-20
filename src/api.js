@@ -151,15 +151,23 @@ export async function listNoteTypes() {
 
 export async function createNoteType(name, userId) {
   const clean = String(name || '').trim();
-  if (!clean) throw new Error('성격 이름을 입력하세요.');
-  if (clean.length > 30) throw new Error('성격 이름은 30자 이내로 입력하세요.');
+  if (!clean) throw new Error('유형 이름을 입력하세요.');
+  if (clean.length > 30) throw new Error('유형 이름은 30자 이내로 입력하세요.');
   const { data, error } = await supabase.from('rtw_note_types').insert({ owner_id: userId, name: clean }).select().single();
   fail(error);
   return data;
 }
 
+export async function renameNoteType(id, name) {
+  const clean = String(name || '').trim();
+  if (!clean || clean.length > 30) throw new Error('유형 이름은 1~30자로 입력하세요.');
+  const { data, error } = await supabase.rpc('rtw_rename_note_type', { p_type_id: id, p_new_name: clean });
+  fail(error);
+  return data;
+}
+
 export async function deleteNoteType(id) {
-  const { error } = await supabase.from('rtw_note_types').delete().eq('id', id);
+  const { error } = await supabase.rpc('rtw_delete_note_type_if_unused', { p_type_id: id });
   fail(error);
 }
 
