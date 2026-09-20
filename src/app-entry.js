@@ -1,7 +1,8 @@
-import { bootstrapOAuth } from './auth-oauth.js';
+import { bootstrapNativeOAuth, bootstrapOAuth } from './auth-oauth.js';
 
 try {
   await bootstrapOAuth();
+  await bootstrapNativeOAuth();
 } catch (error) {
   console.error('OAuth callback failed', error);
 }
