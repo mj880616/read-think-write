@@ -70,6 +70,79 @@ export async function signOut() {
   fail(error);
 }
 
+export const AI_DAILY_LIMITS = Object.freeze({ read: 20, expand: 10, recommend: 10 });
+
+export async function getBetaAccess(email) {
+  const clean = String(email || '').trim().toLowerCase();
+  if (!clean) return null;
+  const { data, error } = await supabase
+    .from('rtw_beta_access')
+    .select('email,role,active,invited_at,note')
+    .eq('email', clean)
+    .maybeSingle();
+  fail(error);
+  return data;
+}
+
+export async function listBetaAccess() {
+  const { data, error } = await supabase
+    .from('rtw_beta_access')
+    .select('email,role,active,invited_at,note')
+    .order('invited_at', { ascending: true });
+  fail(error);
+  return data ?? [];
+}
+
+export async function inviteBetaEmail(email, note = '') {
+  const clean = String(email || '').trim().toLowerCase();
+  if (!clean || !clean.includes('@')) throw new Error('이메일 주소를 확인하세요.');
+  const { data, error } = await supabase
+    .from('rtw_beta_access')
+    .upsert({ email: clean, role: 'user', active: true, note: String(note || '').trim() || null }, { onConflict: 'email' })
+    .select('email,role,active,invited_at,note')
+    .single();
+  fail(error);
+  return data;
+}
+
+export async function removeBetaEmail(email) {
+  const clean = String(email || '').trim().toLowerCase();
+  const { error } = await supabase.from('rtw_beta_access').delete().eq('email', clean);
+  fail(error);
+}
+
+export async function getAiUsageToday() {
+  const { data, error } = await supabase.rpc('rtw_ai_usage_today');
+  fail(error);
+  const counts = { read: 0, expand: 0, recommend: 0 };
+  for (const row of data ?? []) {
+    if (Object.prototype.hasOwnProperty.call(counts, row.action)) counts[row.action] = Number(row.count || 0);
+  }
+  return counts;
+}
+
+export async function submitFeedback(body, pagePath, userId) {
+  const clean = String(body || '').trim();
+  if (!clean) throw new Error('피드백 내용을 입력하세요.');
+  const { data, error } = await supabase
+    .from('rtw_feedback')
+    .insert({ owner_id: userId, body: clean, page_path: String(pagePath || '').slice(0, 500) || null })
+    .select('id,body,page_path,created_at')
+    .single();
+  fail(error);
+  return data;
+}
+
+export async function listFeedback() {
+  const { data, error } = await supabase
+    .from('rtw_feedback')
+    .select('id,owner_id,body,page_path,created_at')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  fail(error);
+  return data ?? [];
+}
+
 export async function listResources() {
   const { data, error } = await supabase
     .from('rtw_resources')
