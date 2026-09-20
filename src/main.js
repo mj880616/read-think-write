@@ -1047,7 +1047,6 @@ function bindPrimaryTabSwipe() {
   let gesture = null;
   const threshold = 64;
   const intentDistance = 10;
-  const preventDistance = 32;
   const edgeDistance = 24;
   const horizontalRatio = 1.5;
 
@@ -1060,7 +1059,7 @@ function bindPrimaryTabSwipe() {
   };
 
   const ignoredTarget = (target) =>
-    target.closest('a, button, input, label, select, summary, textarea, [contenteditable="true"], [data-swipe-ignore], .resource-passage-bookmarks-list');
+    target.closest('button, input, label, select, textarea, [contenteditable="true"], [data-swipe-ignore], .resource-passage-bookmarks-list');
 
   root.addEventListener('touchstart', (event) => {
     if (event.touches.length !== 1 || primaryTabIndex() < 0 || ignoredTarget(event.target)) return;
@@ -1090,7 +1089,7 @@ function bindPrimaryTabSwipe() {
     gesture.dy = dy;
     const index = primaryTabIndex();
     const blocked = (dx > 0 && index === 0) || (dx < 0 && index === SWIPE_TABS.length - 1);
-    if (!blocked && Math.abs(dx) >= preventDistance) {
+    if (!blocked) {
       if (!event.cancelable) {
         gesture.mode = 'vertical';
         gesture.page.classList.remove('swipe-dragging');

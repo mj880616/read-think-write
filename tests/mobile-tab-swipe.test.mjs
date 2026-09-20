@@ -8,6 +8,20 @@ const start = source.indexOf('function bindPrimaryTabSwipe()');
 const end = source.indexOf('\nbindPrimaryTabSwipe();', start);
 assert.ok(start >= 0 && end > start, 'primary tab swipe handler exists');
 const swipeSource = source.slice(start, end);
+const tabsSource = source.slice(source.indexOf('const PRIMARY_TABS = ['), source.indexOf('let user = null;'));
+const indexStart = source.indexOf('function primaryTabIndex()');
+const indexSource = source.slice(indexStart, start);
+
+test('every main tab still resolves to its swipe neighbor after the memo label change', () => {
+  const paths = ['/', '/read/', '/bookmarks/', '/notes/', '/records/', '/topics/', '/questions/', '/archive/2026/', '/search/'];
+  for (const [index, path] of paths.entries()) {
+    const resolved = vm.runInNewContext(`${tabsSource}\n${indexSource}\n({ index: primaryTabIndex(), label: SWIPE_TABS[primaryTabIndex()]?.label })`, {
+      pathFromLocation: () => path
+    });
+    assert.equal(resolved.index, index, path);
+    if (path === '/notes/') assert.equal(resolved.label, '메모');
+  }
+});
 
 function swipeHarness({ index = 2, targetType = 'blank', selection = '' } = {}) {
   const listeners = new Map();
@@ -69,8 +83,8 @@ test('vertical scroll and diagonal movement do not switch tabs or prevent scroll
   }
 });
 
-test('interactive controls, links, and selected text retain their gestures', () => {
-  for (const targetType of ['button', 'input', 'textarea', 'select', 'a', 'summary']) {
+test('interactive controls, horizontal scrollers, and selected text retain their gestures', () => {
+  for (const targetType of ['button', 'input', 'textarea', 'select', 'label', '[data-swipe-ignore]']) {
     const h = swipeHarness({ targetType });
     h.fire('touchstart', 195, 500);
     h.fire('touchmove', 100, 500);
@@ -84,6 +98,34 @@ test('interactive controls, links, and selected text retain their gestures', () 
   selected.fire('touchend');
   assert.deepEqual(selected.navigations, []);
   assert.equal(selected.prevented, 0);
+});
+
+test('links and card summaries still allow a deliberate tab swipe while a tap stays untouched', () => {
+  for (const targetType of ['a', 'summary']) {
+    const swipe = swipeHarness({ targetType });
+    swipe.fire('touchstart', 195, 500);
+    swipe.fire('touchmove', 175, 500);
+    swipe.fire('touchmove', 100, 500);
+    swipe.fire('touchend');
+    assert.deepEqual(swipe.navigations, ['/tab-3/'], targetType);
+
+    const tap = swipeHarness({ targetType });
+    tap.fire('touchstart', 195, 500);
+    tap.fire('touchmove', 192, 500);
+    tap.fire('touchend');
+    assert.deepEqual(tap.navigations, [], targetType);
+    assert.equal(tap.prevented, 0, targetType);
+  }
+});
+
+test('the first horizontal move is handled before the browser claims the gesture', () => {
+  const h = swipeHarness();
+  h.fire('touchstart', 195, 500);
+  h.fire('touchmove', 177, 500);
+  assert.equal(h.prevented, 1);
+  h.fire('touchmove', 100, 500);
+  h.fire('touchend');
+  assert.deepEqual(h.navigations, ['/tab-3/']);
 });
 
 test('browser edge gestures and unavailable adjacent tabs are not intercepted', () => {
