@@ -1,5 +1,8 @@
 <resources>
-    <style name="Theme.ReadSaenggi" parent="@android:style/Theme.DeviceDefault.Light.NoActionBar">
+    <style name="Theme.ReadSaenggi" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/read_accent</item>
         <item name="android:statusBarColor">@color/read_bg</item>

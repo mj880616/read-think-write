@@ -107,3 +107,10 @@
 - 목적: Android 패키지/설치/런처 자체 문제인지 TWA 설정 문제인지 분리 확인.
 - 이 진단 APK가 열리면 Android 프로젝트 자체는 정상이고, 다음 수정 대상을 TWA/assetlinks/브라우저 연동으로 한정할 수 있음.
 - 이 진단 APK가 열리지 않으면 기기 설치 정책 또는 APK 호환/서명/패키징 쪽을 우선 조사.
+
+
+## TWA 최종 진단 시도
+
+- 공식 Android Browser Helper 예제와 비교해 Launcher theme를 AppCompat NoActionBar 계열로 변경.
+- 삼성 인터넷 등 다른 Custom Tabs provider 선택 가능성을 제거하기 위해 테스트판은 Google Chrome(com.android.chrome)을 명시적으로 사용.
+- 이 테스트가 실패하면 TWA 방식은 중단하고 다른 Android 래핑 방식으로 전환.
