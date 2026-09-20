@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">읽생기</string>
     <string name="launch_url">https://read.bokdoong.com/</string>
+    <string name="asset_statements">[{"relation":["delegate_permission/common.handle_all_urls"],"target":{"namespace":"web","site":"https://read.bokdoong.com"}}]</string>
 </resources>
