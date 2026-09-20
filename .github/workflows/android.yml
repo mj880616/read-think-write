@@ -28,7 +28,12 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Generate Android project
         working-directory: mobile
-        run: npx cap add android
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: Add OAuth deep link
+        working-directory: mobile
+        run: node scripts/patch-android-auth.mjs
       - name: Build debug APK
         working-directory: mobile/android
         run: ./gradlew assembleDebug
