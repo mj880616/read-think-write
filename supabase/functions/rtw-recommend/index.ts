@@ -9,10 +9,19 @@ const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'au
 function json(data:unknown,status=200){return new Response(JSON.stringify(data),{status,headers:{...cors,'Content-Type':'application/json; charset=utf-8'}});}
 function trim(v:unknown,n=500){return typeof v==='string'?v.slice(0,n):'';}
 async function userOf(req:Request){const token=(req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'');if(!token)throw new Error('로그인이 필요합니다.');const {data,error}=await admin.auth.getUser(token);if(error||!data.user)throw new Error('로그인 세션을 확인할 수 없습니다.');return data.user;}
+async function requireBetaAccess(user: any) {
+  const email = String(user?.email || '').trim().toLowerCase();
+  if (!email) throw new Error('Google 계정 이메일을 확인할 수 없습니다.');
+  const { data, error } = await admin.from('rtw_beta_access').select('role').eq('email', email).eq('active', true).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('현재 무료 베타는 초대된 계정만 이용할 수 있습니다.');
+  return data;
+}
+
 function outputText(r:any){let out='';for(const item of r.output||[])for(const c of item.content||[])if(c.type==='output_text'&&c.text)out+=c.text;return out||r.output_text||'';}
 function safeUrl(v:unknown){try{const u=new URL(String(v||''));return u.protocol==='https:'||u.protocol==='http:'?u.href:'';}catch{return '';}}
 Deno.serve(async(req:Request)=>{if(req.method==='OPTIONS')return new Response('ok',{headers:cors});try{
-if(req.method!=='POST')return json({error:'POST only'},405);const user=await userOf(req);const {error:quotaError}=await admin.rpc('rtw_consume_ai_quota',{p_owner_id:user.id,p_action:'recommend',p_limit:10});if(quotaError){if(quotaError.message.includes('daily_ai_limit_reached'))throw new Error('오늘의 새 글 추천 횟수(10회)를 모두 사용했습니다.');throw quotaError;}if(!OPENAI)throw new Error('AI API 키가 설정되지 않았습니다.');
+if(req.method!=='POST')return json({error:'POST only'},405);const user=await userOf(req);await requireBetaAccess(user);const {error:quotaError}=await admin.rpc('rtw_consume_ai_quota',{p_owner_id:user.id,p_action:'recommend',p_limit:10});if(quotaError){if(quotaError.message.includes('daily_ai_limit_reached'))throw new Error('오늘의 새 글 추천 횟수(10회)를 모두 사용했습니다.');throw quotaError;}if(!OPENAI)throw new Error('AI API 키가 설정되지 않았습니다.');
 const input=await req.json().catch(()=>({}));const recentUrls=Array.isArray(input?.exclude_urls)?input.exclude_urls.map(String).slice(0,20):[];
 const [resourcesQ,notesQ,questionsQ,topicsQ]=await Promise.all([
 admin.from('rtw_resources').select('title,author,source_name,published_on,original_url,created_at,body_md').eq('owner_id',user.id).order('created_at',{ascending:false}).limit(40),
