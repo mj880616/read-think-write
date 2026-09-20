@@ -13,7 +13,7 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getResourceFailureOnceFor, getResourceFailure, detailFailureFor, detailFailure, holdCreateTopicFor, holdRelationSaveFor, ownerAllowed = () => true } = {}) {
+function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getResourceFailureOnceFor, getResourceFailure, detailFailureFor, detailFailure, holdCreateTopicFor, holdRelationSaveFor, betaAllowed = () => true } = {}) {
   const listeners = [];
   const reads = [];
   const ownerChecks = [];
@@ -45,7 +45,10 @@ function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getRe
   const api = {
     currentUser: async () => null,
     signIn: async (email) => { current = { id: email.startsWith('a@') ? A : B, email }; return current; },
-    isPersonalOwner: async () => { ownerChecks.push(current?.id); return ownerAllowed(current?.id); },
+    isPersonalOwner: async () => { ownerChecks.push(current?.id); return true; },
+    getBetaAccess: async () => betaAllowed(current?.id) ? { email: current?.email, role: 'user', active: true } : null,
+    getAiUsageToday: async () => ({ read: 0, expand: 0, recommend: 0 }),
+    AI_DAILY_LIMITS: { read: 20, expand: 10, recommend: 10 },
     signOut: async () => { current = null; listeners.forEach((fn) => fn('SIGNED_OUT', null)); },
     listResources: () => read('resources', current ? [rows[current.id]] : []),
     listNotes: (id) => read('notes', id ? [] : current ? [{ ...rows[current.id], body: `${current.id === A ? 'A' : 'B'} note`, resource_id: null }] : []),
@@ -324,8 +327,16 @@ test('same-user INITIAL_SESSION and TOKEN_REFRESHED keep state without reload', 
   assert.deepEqual(app.ownerChecks, []);
 });
 
+test('an authenticated account without a beta invitation is blocked before personal data loads', async () => {
+  const app = harness({ betaAllowed: (id) => id === A });
+  app.signIn(B); await app.settle();
+  assert.equal(app.reads.filter((read) => read.id === B).length, 0);
+  assert.match(app.html, /초대가 필요한 계정/);
+  assert.doesNotMatch(app.html, /B resource|B note|B question/);
+});
+
 test('a second authenticated user loads only their own data without a personal-owner gate', async () => {
-  const app = harness({ ownerAllowed: () => false });
+  const app = harness({ betaAllowed: () => true });
   app.signIn(A); await app.settle();
   app.signIn(B); await app.settle();
   assert.deepEqual(app.ownerChecks, []);
@@ -335,7 +346,7 @@ test('a second authenticated user loads only their own data without a personal-o
 });
 
 test('form login loads the signed-in user without a personal-owner gate', async () => {
-  const app = harness({ ownerAllowed: () => false });
+  const app = harness({ betaAllowed: () => true });
   await app.settle();
   app.loginForm.values = { email: 'b@example.com', password: 'secret' };
   app.loginForm.emit('submit', { preventDefault() {}, currentTarget: app.loginForm });
