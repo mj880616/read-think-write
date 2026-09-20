@@ -8,7 +8,7 @@
 
 ## 현재 단계
 
-3단계: 실기기 설치용 debug APK 생성 및 휴대폰 검증 준비.
+4단계: 테스트 APK와 read.bokdoong.com의 Digital Asset Links 연결.
 
 ## 확정된 결정
 
@@ -40,12 +40,16 @@
 - GitHub Actions에서 debug APK 자동 생성
 - 생성된 debug APK를 14일간 Actions artifact로 보관
 - 웹 회귀 테스트 / Pages 배포 / Android build 자동검사 통과 구조 확보
+- 현재 테스트 APK의 SHA-256 서명 지문 확인
+- `/.well-known/assetlinks.json`에 현재 테스트 APK 지문 연결
+- GitHub Pages에서 `.well-known` 경로가 배포되도록 `.nojekyll` 추가
 
 ## 아직 필요한 항목
 
-1. 생성된 debug APK를 실제 Android 휴대전화에 설치
-2. 앱 실행/뒤로가기/외부링크/로그인 흐름 실기기 확인
-3. release signing key 생성 및 안전한 보관
+1. `https://read.bokdoong.com/.well-known/assetlinks.json` 실배포 확인
+2. 생성된 debug APK를 실제 Android 휴대전화에 설치
+3. 앱 실행/뒤로가기/외부링크/로그인 흐름 실기기 확인
+4. release signing key 생성 및 안전한 보관
 4. signing SHA-256 fingerprint 확보
 5. 실제 `/.well-known/assetlinks.json` 배포
 6. TWA 전체화면 검증
@@ -75,7 +79,7 @@
 
 ## 진행률
 
-약 16%.
+약 20%.
 
 ## 남은 예상 비용
 

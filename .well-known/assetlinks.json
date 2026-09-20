@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.bokdoong.read",
+      "sha256_cert_fingerprints": [
+        "E5:93:AE:C6:FF:E5:7B:5A:D1:24:BB:3E:9E:82:2B:C9:62:4C:82:C1:F8:E4:CA:98:60:76:7F:24:E5:90:6E:B2"
+      ]
+    }
+  }
+]
