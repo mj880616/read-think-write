@@ -1,0 +1,10 @@
+# Android local/build output
+android/.gradle/
+android/**/build/
+android/local.properties
+
+# Signing material must never be committed
+*.jks
+*.keystore
+keystore.properties
+android/signing.properties

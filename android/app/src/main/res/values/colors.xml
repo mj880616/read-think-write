@@ -1,0 +1,5 @@
+<resources>
+    <color name="read_bg">#F4F1E8</color>
+    <color name="read_ink">#22201C</color>
+    <color name="read_accent">#2D5548</color>
+</resources>
