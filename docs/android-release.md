@@ -157,3 +157,11 @@
 ## 현재 진행률
 
 약 30% (코드 구현 완료 기준, Supabase redirect 허용 및 실기기 재검증 전).
+
+
+## OAuth 복귀 후 권한 확인 정체 수정
+
+- 현상: Google 인증 후 읽생기 앱으로 정상 복귀하지만 `이용 권한 확인 중…`에서 진행되지 않음.
+- 원인 판단: native OAuth는 페이지 재로드 없이 Supabase SIGNED_IN 이벤트를 발생시킴. 기존 코드가 `onAuthStateChange` 콜백 안에서 즉시 `render()`를 호출했고, render가 다시 Supabase의 `rtw_beta_access` 조회를 시작하면서 인증 콜백과 후속 조회가 충돌할 수 있었음.
+- 조치: 인증 상태 콜백에서는 사용자 상태만 반영하고, Supabase 조회가 필요한 render는 다음 이벤트 루프로 지연.
+- 다음 실기기 검증: Google 로그인 → 앱 복귀 → 이용 권한 확인 통과 → 홈 화면 진입.
