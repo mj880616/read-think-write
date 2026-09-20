@@ -129,7 +129,7 @@ function uiHarness(noteTypes = [], createError = null, updateError = null, optio
   };
   context.testTypes = noteTypes;
   context.testNotes = initialNotes;
-  vm.runInNewContext(mainSource + '\nuser = { id: "owner-1", email: "test@example.com" }; ownerVerifiedId = user.id; state.notes = globalThis.testNotes; state.noteTypes = globalThis.testTypes; globalThis.noteUi = { notesView, noteTypeOptions, setAuthUser, get selectedNoteTypeFilter() { return selectedNoteTypeFilter; } };', context);
+  vm.runInNewContext(mainSource + '\nuser = { id: "owner-1", email: "test@example.com" }; dataReadyUserId = user.id; state.notes = globalThis.testNotes; state.noteTypes = globalThis.testTypes; globalThis.noteUi = { notesView, noteTypeOptions, setAuthUser, get selectedNoteTypeFilter() { return selectedNoteTypeFilter; } };', context);
   return { root, callbacks, writes, logs, alerts, confirms, status, editStatus, newForm, editForm, renameForm, filterButtons, filterItems, filterEmpty, get noteReads() { return noteReads; }, get relationReads() { return relationReads; }, ui: context.noteUi };
 }
 
