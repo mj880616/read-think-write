@@ -8,11 +8,11 @@
 
 ## 현재 단계
 
-4단계 안정화: Android 패키지 자체와 TWA 문제를 분리 진단.
+5단계: Capacitor 앱 Google OAuth 딥링크 복귀 구현.
 
 ## 확정된 결정
 
-- Android 방식: TWA + Android Browser Helper/Bubblewrap 계열
+- Android 방식: Capacitor 8 기반 WebView 셸 (TWA 폐기)
 - 웹 본체: https://read.bokdoong.com/
 - 앱 이름: 읽생기
 - package/application ID: `com.bokdoong.read`
@@ -142,3 +142,18 @@
 ## 현재 진행률
 
 약 25%.
+
+
+## Google OAuth 앱 복귀 구현
+
+- 실기기에서 Google 인증 자체는 성공했으나 인증 완료 후 브라우저에 남는 현상 확인.
+- Android 앱에서는 OAuth redirect를 `com.bokdoong.read://auth/callback`으로 분리.
+- 인증은 Capacitor Browser에서 진행하고, Android 딥링크가 읽생기 앱을 다시 열도록 구성.
+- 앱 복귀 후 기존 PKCE verifier를 사용해 `exchangeCodeForSession`으로 Supabase 세션을 앱 WebView에 생성.
+- 웹 브라우저 로그인 흐름은 기존 동작 유지.
+- 필요한 Supabase 설정: Auth > URL Configuration의 Redirect URLs에 `com.bokdoong.read://auth/callback` 추가.
+- 다음 실기기 검증: Google 로그인 → 외부 인증 → 읽생기 앱 자동 복귀 → 로그인 완료 확인.
+
+## 현재 진행률
+
+약 30% (코드 구현 완료 기준, Supabase redirect 허용 및 실기기 재검증 전).
