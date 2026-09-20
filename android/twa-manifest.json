@@ -1,0 +1,17 @@
+{
+  "packageId": "com.bokdoong.read",
+  "host": "read.bokdoong.com",
+  "name": "읽생기",
+  "launcherName": "읽생기",
+  "display": "standalone",
+  "themeColor": "#F4F1E8",
+  "backgroundColor": "#F4F1E8",
+  "startUrl": "/",
+  "appVersionCode": 1,
+  "appVersionName": "0.1.0",
+  "minSdkVersion": 23,
+  "targetSdkVersion": 36,
+  "orientation": "default",
+  "generatorApp": "read-think-write",
+  "webManifestUrl": "https://read.bokdoong.com/manifest.webmanifest"
+}
