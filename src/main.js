@@ -28,6 +28,8 @@ const SWIPE_TABS = [
 let user = null;
 let authEpoch = 0;
 let dataReadyUserId = null;
+let accessReadyUserId = null;
+let betaAccess = null;
 let state = emptyUserState();
 
 function emptyUserState() {
@@ -58,6 +60,8 @@ function setAuthUser(next) {
   authEpoch += 1;
   user = next;
   dataReadyUserId = null;
+  accessReadyUserId = null;
+  betaAccess = null;
   clearUserState();
   root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
   return true;
@@ -103,6 +107,9 @@ function shell(content, active = 'home') {
 ${PRIMARY_TABS.map(tab => routeLink(tab.label, tab.path, active === tab.key)).join('')}
       </nav>
       <div class="userbar">
+        <a class="userbar-link" href="${href('/about/')}" data-nav="/about/">안내</a>
+        <a class="userbar-link" href="${href('/feedback/')}" data-nav="/feedback/">피드백</a>
+        ${betaAccess?.role === 'admin' ? `<a class="userbar-link" href="${href('/beta/')}" data-nav="/beta/">베타 관리</a>` : ''}
         <span class="user-email">${esc(user?.email || '')}</span>
         <button class="logout-link" type="button" data-logout>로그아웃</button>
       </div>
@@ -152,7 +159,17 @@ function loginView() {
       <div class="eyebrow">Personal knowledge archive</div>
       <h1>읽고 생각하고 기록하기</h1>
       <p class="muted">읽은 것을 저장하는 데서 끝내지 않고, 생각과 질문을 다시 연결하는 개인 작업공간.</p>
-      <p class="login-privacy">Google 로그인 정보는 계정 식별과 로그인에 사용하며, 저장한 글·메모·질문·책갈피는 계정별로 분리해 보관합니다. AI 읽기와 새 글 추천을 사용할 때에는 해당 기능에 필요한 기록 일부가 AI 처리에 사용됩니다. 계정 삭제 시 읽생기에 저장된 개인 데이터와 계정을 함께 삭제합니다.</p>
+      <p class="login-privacy">현재 무료 베타는 초대된 Google 계정만 이용할 수 있습니다. 로그인 정보는 계정 식별과 접근 확인에 사용하며, 글·메모·질문·책갈피 등 개인 기록은 계정별로 분리해 보관합니다.</p>
+      <details class="beta-policy">
+        <summary>베타 이용·개인정보 안내</summary>
+        <div class="beta-policy-body">
+          <p><strong>베타 이용.</strong> 현재 기능은 시험 운영 중이며 변경·중단될 수 있습니다. 개인 기록의 별도 백업이 필요한 경우 이용자가 직접 보관해야 합니다.</p>
+          <p><strong>저장 정보.</strong> Google 계정 이메일, 이용자가 직접 저장한 글·메모·질문·책갈피·글쓰기 기록, 기능 이용에 필요한 최소한의 사용량 정보를 저장합니다.</p>
+          <p><strong>AI 처리.</strong> AI 읽기·생각 확장·추천 기능을 실행할 때 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 외부 GPT 직접쓰기 경로는 운영자 계정에만 연결되어 있습니다.</p>
+          <p><strong>삭제.</strong> 계정 삭제 기능을 사용하면 해당 계정에 연결된 읽생기 개인 데이터와 인증 계정을 삭제합니다. 서비스 운영·보안상 필요한 최소 로그는 별도 시스템의 보존정책에 따를 수 있습니다.</p>
+          <p>피드백은 서비스 개선 목적으로 확인하며, 민감한 개인정보는 피드백에 적지 않는 것을 권장합니다.</p>
+        </div>
+      </details>
       <form id="login-form" class="form">
         <div class="field"><label>이메일</label><input name="email" type="email" autocomplete="email" required></div>
         <div class="field"><label>비밀번호</label><input name="password" type="password" autocomplete="current-password" required></div>
@@ -361,11 +378,13 @@ function homeView() {
       <div class="card"><h2>이어가는 질문</h2><div class="stack">${questions.map((question) => `<div class="item">${questionLink(question)}${question.current_thought ? `<div class="meta">${esc(question.current_thought).slice(0, 120)}</div>` : ''}</div>`).join('') || empty('아직 질문이 없음')}</div></div>
       <div class="card"><h2>주제</h2><div class="tagrow">${state.topics.map(topicLink).join('') || '<span class="muted">주제가 쌓이면 여기에서 다시 만남.</span>'}</div></div>
       <div class="card"><h2>연도별 아카이브</h2><div class="stack">${years.map((year) => `<div class="item"><a href="${href(`/archive/${year}/`)}" data-nav="/archive/${year}/">${year}년 기록 보기</a></div>`).join('')}</div></div>
+      <div class="card ai-usage-card"><div class="records-card-head"><div><h2>오늘의 AI 사용량</h2><p class="muted">한국 시간 자정에 초기화됩니다.</p></div></div><div class="ai-usage-summary" id="ai-usage-summary"><span class="muted">불러오는 중…</span></div></div>
     </section>
   `, 'home');
   bindCommon();
   bindNoteActions();
   bindResourceBookmarkButtons();
+  loadAiUsageSummary();
 
 }
 
@@ -993,6 +1012,138 @@ function searchView() {
   draw();
 }
 
+function betaDeniedView() {
+  root.innerHTML = `<div class="shell login-wrap"><section class="login beta-denied">
+    <div class="eyebrow">Free beta</div>
+    <h1>초대가 필요한 계정</h1>
+    <p class="muted">현재 읽생기 무료 베타는 초대된 Google 계정만 이용할 수 있습니다.</p>
+    <p class="beta-denied-email">${esc(user?.email || '')}</p>
+    <div class="inline-actions"><button class="btn secondary" type="button" data-logout>다른 계정으로 로그인</button></div>
+  </section></div>`;
+  document.querySelector('[data-logout]')?.addEventListener('click', () => api.signOut().catch(() => {}));
+}
+
+function aboutView() {
+  root.innerHTML = shell(`
+    <section class="hero"><div class="eyebrow">Free beta</div><h1>이용·개인정보 안내</h1><p>읽생기는 읽기와 생각, 메모와 글쓰기를 연결하는 개인 작업공간의 무료 베타 버전입니다.</p></section>
+    <section class="card policy-page">
+      <h2>베타 이용</h2>
+      <p>현재 기능과 화면은 시험 운영 중이며 사용자 피드백에 따라 변경되거나 일부 기능이 중단될 수 있습니다. 중요한 원문이나 기록은 필요에 따라 별도로 보관하는 것을 권장합니다.</p>
+      <h2>저장하는 정보</h2>
+      <p>Google 계정 이메일과 이용자가 직접 저장한 글·메모·질문·책갈피·글쓰기 기록, AI 기능의 일일 사용량 등 서비스 제공에 필요한 정보를 저장합니다. 개인 기록은 계정별로 분리하여 다른 일반 사용자가 조회할 수 없도록 구성되어 있습니다.</p>
+      <h2>AI 기능</h2>
+      <p>AI 읽기, 생각 확장, 새 글 추천을 실행하면 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 무료 베타에서는 비용과 안정성을 위해 일일 사용 횟수를 제한합니다.</p>
+      <h2>계정과 삭제</h2>
+      <p>로그아웃은 현재 기기의 로그인 세션을 종료합니다. 계정 삭제 기능을 사용하면 해당 계정의 읽생기 개인 데이터와 인증 계정을 삭제합니다.</p>
+      <h2>피드백</h2>
+      <p>보낸 피드백은 베타 운영자가 서비스 개선을 위해 확인합니다. 비밀번호, 주민등록번호, 건강정보 등 민감한 개인정보는 피드백에 포함하지 마세요.</p>
+    </section>`, 'about');
+  bindCommon();
+}
+
+async function feedbackView() {
+  root.innerHTML = shell(`
+    <section class="hero"><div class="eyebrow">Beta feedback</div><h1>피드백 보내기</h1><p>불편한 점, 필요한 기능, 계속 쓰고 싶은 이유를 자유롭게 남겨주세요.</p></section>
+    <section class="card feedback-card">
+      <form class="form" id="feedback-form">
+        <div class="field"><label>피드백</label><textarea name="body" maxlength="5000" required placeholder="어떤 상황에서 무엇이 불편했는지 알려주면 개선에 도움이 됩니다."></textarea></div>
+        <button class="btn" type="submit">보내기</button>
+        <div class="status" id="feedback-status" aria-live="polite"></div>
+      </form>
+    </section>`, 'feedback');
+  bindCommon();
+  document.querySelector('#feedback-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const status = document.querySelector('#feedback-status');
+    const button = event.currentTarget.querySelector('button[type="submit"]');
+    status.textContent = '보내는 중…';
+    button.disabled = true;
+    try {
+      const body = new FormData(event.currentTarget).get('body');
+      await api.submitFeedback(body, pathFromLocation(), user.id);
+      event.currentTarget.reset();
+      status.textContent = '피드백을 보냈습니다.';
+    } catch (error) {
+      status.textContent = error.message;
+      status.classList.add('error');
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+async function betaAdminView() {
+  if (betaAccess?.role !== 'admin') return notFound();
+  root.innerHTML = shell('<section class="hero"><div class="eyebrow">Free beta</div><h1>베타 관리</h1><p>초대 계정과 최근 피드백을 관리합니다.</p></section><div class="empty">불러오는 중…</div>', 'beta');
+  bindCommon();
+  try {
+    const [accessRows, feedbackRows] = await Promise.all([api.listBetaAccess(), api.listFeedback()]);
+    root.innerHTML = shell(`
+      <section class="hero"><div class="eyebrow">Free beta</div><h1>베타 관리</h1><p>초대 계정과 최근 피드백을 관리합니다.</p></section>
+      <section class="grid beta-admin-grid">
+        <div class="card">
+          <h2>계정 초대</h2>
+          <form class="form" id="beta-invite-form">
+            <div class="field"><label>Google 이메일</label><input name="email" type="email" required placeholder="example@gmail.com"></div>
+            <div class="field"><label>메모 (선택)</label><input name="note" maxlength="200"></div>
+            <button class="btn" type="submit">초대 추가</button>
+            <div class="status" id="beta-invite-status"></div>
+          </form>
+          <div class="beta-access-list">
+            ${accessRows.map((row) => `<div class="beta-access-row">
+              <div><strong>${esc(row.email)}</strong><div class="meta">${esc(row.role)}${row.note ? ' · ' + esc(row.note) : ''}</div></div>
+              ${row.role === 'admin' ? '<span class="tag">관리자</span>' : `<button class="btn secondary small" type="button" data-beta-remove="${esc(row.email)}">초대 해제</button>`}
+            </div>`).join('')}
+          </div>
+        </div>
+        <div class="card">
+          <h2>최근 피드백</h2>
+          <div class="stack">${feedbackRows.map((row) => `<div class="item feedback-item"><div>${esc(row.body)}</div><div class="meta">${new Date(row.created_at).toLocaleString('ko-KR')}${row.page_path ? ' · ' + esc(row.page_path) : ''}</div></div>`).join('') || '<div class="empty">아직 피드백이 없음</div>'}</div>
+        </div>
+      </section>`, 'beta');
+    bindCommon();
+    document.querySelector('#beta-invite-form')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const values = new FormData(event.currentTarget);
+      const status = document.querySelector('#beta-invite-status');
+      status.textContent = '추가 중…';
+      try {
+        await api.inviteBetaEmail(values.get('email'), values.get('note'));
+        await betaAdminView();
+      } catch (error) {
+        status.textContent = error.message;
+        status.classList.add('error');
+      }
+    });
+    document.querySelectorAll('[data-beta-remove]').forEach((button) => button.addEventListener('click', async () => {
+      if (!confirm(`${button.dataset.betaRemove} 계정의 베타 이용 권한을 해제할까요?`)) return;
+      await api.removeBetaEmail(button.dataset.betaRemove);
+      await betaAdminView();
+    }));
+  } catch (error) {
+    root.innerHTML = shell(`<section class="hero"><h1>베타 관리 정보를 불러오지 못함</h1><p>${esc(error.message)}</p></section>`, 'beta');
+    bindCommon();
+  }
+}
+
+async function loadAiUsageSummary() {
+  const target = document.querySelector('#ai-usage-summary');
+  if (!target || !user) return;
+  const guard = currentViewGuard();
+  try {
+    const usage = await api.getAiUsageToday();
+    if (!guard() || !document.querySelector('#ai-usage-summary')) return;
+    const item = (label, key) => {
+      const used = usage[key] || 0;
+      const limit = api.AI_DAILY_LIMITS[key];
+      return `<div class="ai-usage-item"><span>${label}</span><strong>${Math.max(0, limit - used)} / ${limit}</strong><small>남음</small></div>`;
+    };
+    target.innerHTML = item('AI 읽기','read') + item('생각 확장','expand') + item('새 글 추천','recommend');
+  } catch {
+    target.innerHTML = '<span class="muted">AI 사용량을 불러오지 못함</span>';
+  }
+}
+
 function notFound() {
   root.innerHTML = shell(`<section class="hero"><h1>페이지를 찾을 수 없음</h1><button class="btn" id="go-home">홈으로</button></section>`);
   bindCommon();
@@ -1011,6 +1162,21 @@ async function render() {
       return;
     }
     setAuthUser(current);
+  }
+
+  if (accessReadyUserId !== user.id) {
+    const userId = user.id;
+    const epoch = authEpoch;
+    root.innerHTML = '<div class="shell"><div class="empty">이용 권한 확인 중…</div></div>';
+    const access = await api.getBetaAccess(user.email);
+    if (!isCurrentRequest(userId, epoch)) return;
+    betaAccess = access;
+    accessReadyUserId = userId;
+  }
+
+  if (!betaAccess?.active) {
+    betaDeniedView();
+    return;
   }
 
   if (dataReadyUserId !== user.id) {
@@ -1045,6 +1211,9 @@ async function render() {
   if (archiveMatch) return archiveView(archiveMatch[1]);
 
   if (path === '/search/' || path === '/search') return searchView();
+  if (path === '/about/' || path === '/about') return aboutView();
+  if (path === '/feedback/' || path === '/feedback') return feedbackView();
+  if (path === '/beta/' || path === '/beta') return betaAdminView();
   return notFound();
 }
 
