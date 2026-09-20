@@ -165,7 +165,7 @@ function loginView() {
         <div class="beta-policy-body">
           <p><strong>베타 이용.</strong> 현재 기능은 시험 운영 중이며 변경·중단될 수 있습니다. 개인 기록의 별도 백업이 필요한 경우 이용자가 직접 보관해야 합니다.</p>
           <p><strong>저장 정보.</strong> Google 계정 이메일, 이용자가 직접 저장한 글·메모·질문·책갈피·글쓰기 기록, 기능 이용에 필요한 최소한의 사용량 정보를 저장합니다.</p>
-          <p><strong>AI 처리.</strong> AI 읽기·생각 확장·추천 기능을 실행할 때 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 외부 GPT 직접쓰기 경로는 운영자 계정에만 연결되어 있습니다.</p>
+          <p><strong>AI 처리.</strong> AI 읽기·생각 확장 기능을 실행할 때 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 외부 GPT 직접쓰기 경로는 운영자 계정에만 연결되어 있습니다.</p>
           <p><strong>삭제.</strong> 계정 삭제 기능을 사용하면 해당 계정에 연결된 읽생기 개인 데이터와 인증 계정을 삭제합니다. 서비스 운영·보안상 필요한 최소 로그는 별도 시스템의 보존정책에 따를 수 있습니다.</p>
           <p>피드백은 서비스 개선 목적으로 확인하며, 민감한 개인정보는 피드백에 적지 않는 것을 권장합니다.</p>
         </div>
@@ -1032,7 +1032,7 @@ function aboutView() {
       <h2>저장하는 정보</h2>
       <p>Google 계정 이메일과 이용자가 직접 저장한 글·메모·질문·책갈피·글쓰기 기록, AI 기능의 일일 사용량 등 서비스 제공에 필요한 정보를 저장합니다. 개인 기록은 계정별로 분리하여 다른 일반 사용자가 조회할 수 없도록 구성되어 있습니다.</p>
       <h2>AI 기능</h2>
-      <p>AI 읽기, 생각 확장, 새 글 추천을 실행하면 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 무료 베타에서는 비용과 안정성을 위해 일일 사용 횟수를 제한합니다.</p>
+      <p>AI 읽기와 생각 확장을 실행하면 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 무료 베타에서는 비용과 안정성을 위해 일일 사용 횟수를 제한합니다.</p>
       <h2>계정과 삭제</h2>
       <p>로그아웃은 현재 기기의 로그인 세션을 종료합니다. 계정 삭제 기능을 사용하면 해당 계정의 읽생기 개인 데이터와 인증 계정을 삭제합니다.</p>
       <h2>피드백</h2>
@@ -1133,12 +1133,16 @@ async function loadAiUsageSummary() {
   try {
     const usage = await api.getAiUsageToday();
     if (!guard() || !document.querySelector('#ai-usage-summary')) return;
+    if (betaAccess?.role === 'admin') {
+      target.innerHTML = '<div class="ai-usage-item"><span>AI 읽기</span><strong>무제한</strong></div><div class="ai-usage-item"><span>생각 확장</span><strong>무제한</strong></div>';
+      return;
+    }
     const item = (label, key) => {
       const used = usage[key] || 0;
       const limit = api.AI_DAILY_LIMITS[key];
       return `<div class="ai-usage-item"><span>${label}</span><strong>${Math.max(0, limit - used)} / ${limit}</strong><small>남음</small></div>`;
     };
-    target.innerHTML = item('AI 읽기','read') + item('생각 확장','expand') + item('새 글 추천','recommend');
+    target.innerHTML = item('AI 읽기','read') + item('생각 확장','expand');
   } catch {
     target.innerHTML = '<span class="muted">AI 사용량을 불러오지 못함</span>';
   }
