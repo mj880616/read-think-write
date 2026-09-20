@@ -8,7 +8,7 @@
 
 ## 현재 단계
 
-4단계: 테스트 APK와 read.bokdoong.com의 Digital Asset Links 연결.
+4단계 안정화: 테스트 APK가 일부 실기기에서 열리지 않는 문제 수정.
 
 ## 확정된 결정
 
@@ -79,7 +79,7 @@
 
 ## 진행률
 
-약 20%.
+약 18%.
 
 ## 남은 예상 비용
 
@@ -90,3 +90,11 @@
 ## 남은 예상 일정
 
 전체 Play 정식 출시까지 약 3~5주. 이 중 최소 14일은 Google Play 비공개 테스트 기간입니다.
+
+
+## 실기기 실행 장애 기록
+
+- 현상: 첫 debug APK가 실기기에서 열리지 않음.
+- 판단: 앱 자체 빌드는 성공했으므로 런처/TWA 실행 경로 문제를 우선 의심.
+- 조치: Android Browser Helper 공식 예제와 맞춰 WebView fallback 선언, Launcher intent DEFAULT category 추가, 런처 테마 안정화.
+- 다음 확인: 새 debug APK 설치 후 최소한 화면이 열리는지 확인. TWA 전체화면 여부는 그 다음 판단.
