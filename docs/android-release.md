@@ -8,7 +8,7 @@
 
 ## 현재 단계
 
-4단계 안정화: 테스트 APK가 일부 실기기에서 열리지 않는 문제 수정.
+4단계 안정화: Android 패키지 자체와 TWA 문제를 분리 진단.
 
 ## 확정된 결정
 
@@ -98,3 +98,12 @@
 - 판단: 앱 자체 빌드는 성공했으므로 런처/TWA 실행 경로 문제를 우선 의심.
 - 조치: Android Browser Helper 공식 예제와 맞춰 WebView fallback 선언, Launcher intent DEFAULT category 추가, 런처 테마 안정화.
 - 다음 확인: 새 debug APK 설치 후 최소한 화면이 열리는지 확인. TWA 전체화면 여부는 그 다음 판단.
+
+
+## 2차 실행 장애 진단
+
+- 수정 APK도 실기기에서 오류로 열리지 않음.
+- 따라서 이번 테스트판은 TWA를 런처에서 제거하고 가장 단순한 Android Activity가 시스템 브라우저로 read.bokdoong.com을 여는 방식으로 전환.
+- 목적: Android 패키지/설치/런처 자체 문제인지 TWA 설정 문제인지 분리 확인.
+- 이 진단 APK가 열리면 Android 프로젝트 자체는 정상이고, 다음 수정 대상을 TWA/assetlinks/브라우저 연동으로 한정할 수 있음.
+- 이 진단 APK가 열리지 않으면 기기 설치 정책 또는 APK 호환/서명/패키징 쪽을 우선 조사.
