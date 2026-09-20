@@ -977,6 +977,9 @@ function bindPrimaryTabSwipe() {
   let gesture = null;
   const threshold = 64;
   const intentDistance = 10;
+  const preventDistance = 32;
+  const edgeDistance = 24;
+  const horizontalRatio = 1.5;
 
   const reset = (page, animate = true) => {
     if (!page) return;
@@ -987,14 +990,15 @@ function bindPrimaryTabSwipe() {
   };
 
   const ignoredTarget = (target) =>
-    target.closest('input, textarea, select, button, [contenteditable="true"], [data-swipe-ignore], .resource-passage-bookmarks-list');
+    target.closest('a, button, input, label, select, summary, textarea, [contenteditable="true"], [data-swipe-ignore], .resource-passage-bookmarks-list');
 
   root.addEventListener('touchstart', (event) => {
     if (event.touches.length !== 1 || primaryTabIndex() < 0 || ignoredTarget(event.target)) return;
     const page = event.target.closest('.page');
     if (!page) return;
     const touch = event.touches[0];
-    gesture = { page, x: touch.clientX, y: touch.clientY, dx: 0, mode: null };
+    if (touch.clientX < edgeDistance || touch.clientX > window.innerWidth - edgeDistance || window.getSelection?.()?.toString()) return;
+    gesture = { page, x: touch.clientX, y: touch.clientY, dx: 0, dy: 0, mode: null };
   }, { passive: true });
 
   root.addEventListener('touchmove', (event) => {
@@ -1003,13 +1007,28 @@ function bindPrimaryTabSwipe() {
     const dx = touch.clientX - gesture.x;
     const dy = touch.clientY - gesture.y;
     if (!gesture.mode && Math.max(Math.abs(dx), Math.abs(dy)) >= intentDistance) {
-      gesture.mode = Math.abs(dx) > Math.abs(dy) * 1.25 ? 'horizontal' : 'vertical';
+      gesture.mode = Math.abs(dx) > Math.abs(dy) * horizontalRatio ? 'horizontal' : 'vertical';
     }
     if (gesture.mode !== 'horizontal') return;
+    if (Math.abs(dy) >= Math.abs(dx) / horizontalRatio) {
+      gesture.mode = 'vertical';
+      gesture.page.classList.remove('swipe-dragging');
+      reset(gesture.page, false);
+      return;
+    }
     gesture.dx = dx;
-    event.preventDefault();
+    gesture.dy = dy;
     const index = primaryTabIndex();
     const blocked = (dx > 0 && index === 0) || (dx < 0 && index === SWIPE_TABS.length - 1);
+    if (!blocked && Math.abs(dx) >= preventDistance) {
+      if (!event.cancelable) {
+        gesture.mode = 'vertical';
+        gesture.page.classList.remove('swipe-dragging');
+        reset(gesture.page, false);
+        return;
+      }
+      event.preventDefault();
+    }
     const visualDx = blocked ? dx * 0.18 : dx * 0.55;
     gesture.page.classList.add('swipe-dragging');
     gesture.page.style.transform = `translateX(${visualDx}px)`;
@@ -1021,7 +1040,7 @@ function bindPrimaryTabSwipe() {
     const current = gesture;
     gesture = null;
     current.page.classList.remove('swipe-dragging');
-    if (current.mode !== 'horizontal' || Math.abs(current.dx) < threshold) {
+    if (current.mode !== 'horizontal' || Math.abs(current.dx) < threshold || Math.abs(current.dx) <= Math.abs(current.dy) * horizontalRatio) {
       reset(current.page);
       return;
     }
