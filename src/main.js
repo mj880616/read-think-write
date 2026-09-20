@@ -4,6 +4,7 @@ import { supabase } from './supabase.js';
 import * as api from './api.js';
 import { APP_BASE } from './config.js';
 import { formatDate, groupResourcesByMonth, matchesQuery, safeHttpUrl } from './model.js';
+import { bookmarkSelectionData, locateBookmarkRange } from './bookmark-location.js';
 import { restoreRedirect } from './redirect.js';
 
 restoreRedirect();
@@ -533,24 +534,33 @@ async function resourceDetailView(id) {
 
   document.querySelector('#resource-bookmark-toggle')?.addEventListener('click',async()=>{const stillCurrent=currentViewGuard();const old=bookmarks.find(b=>b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:id,bookmark_type:'resource'},user.id);if(!stillCurrent()||!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
   const article=document.querySelector('#resource-article'); const pop=document.querySelector('#selection-bookmark-pop'); let pending=null; let selectionTimer=null;
-  const captureArticleSelection=()=>{const s=window.getSelection();const t=s?.toString().trim()||'';if(!t||t.length>2000||!s?.rangeCount||!article)return false;const range=s.getRangeAt(0);const common=range.commonAncestorContainer;const node=common.nodeType===Node.TEXT_NODE?common.parentNode:common;if(!article.contains(node))return false;const full=article.innerText;const start=full.indexOf(t);pending={text:t,start};pop.hidden=false;return true;};
+  const captureArticleSelection=()=>{const s=window.getSelection();const t=s?.toString().trim()||'';if(!t||t.length>2000||!s?.rangeCount||!article)return false;const range=s.getRangeAt(0);const common=range.commonAncestorContainer;const node=common.nodeType===Node.TEXT_NODE?common.parentNode:common;if(!article.contains(node))return false;const before=document.createRange();before.selectNodeContents(article);before.setEnd(range.startContainer,range.startOffset);const through=document.createRange();through.selectNodeContents(article);through.setEnd(range.endContainer,range.endOffset);pending=bookmarkSelectionData(article.textContent||'',t,before.toString(),through.toString(),s.toString());if(!pending)return false;pop.hidden=false;return true;};
   const scheduleSelectionCapture=(delay=250)=>{clearTimeout(selectionTimer);selectionTimer=setTimeout(()=>captureArticleSelection(),delay);};
   article?.addEventListener('mouseup',()=>scheduleSelectionCapture(30));
   article?.addEventListener('touchend',()=>{scheduleSelectionCapture(250);scheduleSelectionCapture(650);},{passive:true});
   document.addEventListener('selectionchange',()=>scheduleSelectionCapture(350));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleSelectionCapture(200);});
-  document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const stillCurrent=currentViewGuard();const full=article.innerText;const start=Math.max(0,pending.start);const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:start,end_offset:start+pending.text.length,context_before:full.slice(Math.max(0,start-160),start),context_after:full.slice(start+pending.text.length,start+pending.text.length+160),note},user.id);if(!stillCurrent())return;pop.hidden=true;window.getSelection()?.removeAllRanges();if(!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
+  document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const stillCurrent=currentViewGuard();const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:pending.start,end_offset:pending.end,context_before:pending.contextBefore,context_after:pending.contextAfter,note},user.id);if(!stillCurrent())return;pop.hidden=true;window.getSelection()?.removeAllRanges();if(!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
   const bookmarkId=new URLSearchParams(location.search).get('bookmark');
   if(bookmarkId){
-    const target=state.bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage'&&String(b.resource_id)===String(id));
-    if(target){
-      const articleText=article?.innerText||'';
-      let pos=Number.isFinite(Number(target.start_offset))?Number(target.start_offset):-1;
-      if(pos<0||articleText.slice(pos,pos+(target.selected_text||'').length)!==(target.selected_text||'')) pos=articleText.indexOf(target.selected_text||'');
-      if(pos>=0&&article){
-        const walker=document.createTreeWalker(article,NodeFilter.SHOW_TEXT); let seen=0,startNode=null,startOffset=0,endNode=null,endOffset=0;
-        while(walker.nextNode()){const n=walker.currentNode,len=n.nodeValue.length;if(!startNode&&seen+len>=pos){startNode=n;startOffset=Math.max(0,pos-seen);}if(startNode&&seen+len>=pos+(target.selected_text||'').length){endNode=n;endOffset=Math.max(0,pos+(target.selected_text||'').length-seen);break;}seen+=len;}
-        if(startNode&&endNode){const r=document.createRange();r.setStart(startNode,Math.min(startOffset,startNode.nodeValue.length));r.setEnd(endNode,Math.min(endOffset,endNode.nodeValue.length));const mark=document.createElement('mark');mark.className='bookmark-target';try{r.surroundContents(mark);mark.scrollIntoView({behavior:'smooth',block:'center'});}catch{startNode.parentElement?.scrollIntoView({behavior:'smooth',block:'center'});}}
+    const target=bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage');
+    const nodes=[];
+    if(article){const walker=document.createTreeWalker(article,NodeFilter.SHOW_TEXT);while(walker.nextNode())nodes.push(walker.currentNode);}
+    const found=target&&locateBookmarkRange(nodes,target);
+    if(!found){
+      alert('본문이 수정되어 책갈피 위치를 찾지 못했습니다.');
+    }else{
+      try{
+        const range=document.createRange();
+        range.setStart(found.startNode,found.startOffset);
+        range.setEnd(found.endNode,found.endOffset);
+        const mark=document.createElement('mark');
+        mark.className='bookmark-target';
+        try{range.surroundContents(mark);mark.scrollIntoView({behavior:'smooth',block:'center'});}
+        catch{found.startNode.parentElement?.scrollIntoView({behavior:'smooth',block:'center'});}
+      }catch(error){
+        console.error('Bookmark location failed',error);
+        alert('본문이 수정되어 책갈피 위치를 찾지 못했습니다.');
       }
     }
   }
