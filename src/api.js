@@ -105,9 +105,17 @@ export async function getBetaAccess(email) {
       signal: controller.signal
     });
 
-    const payload = await response.json().catch(() => ({}));
+    const raw = await response.text();
+    let payload = {};
+    try {
+      payload = raw ? JSON.parse(raw) : {};
+    } catch {
+      payload = {};
+    }
+
     if (!response.ok) {
-      throw new Error(payload?.error || payload?.message || '이용 권한을 확인하지 못했습니다.');
+      const detail = payload?.error || payload?.message || raw || '응답 본문 없음';
+      throw new Error(`권한 확인 실패 [HTTP ${response.status}] ${detail}`);
     }
 
     const access = payload?.access ?? null;
