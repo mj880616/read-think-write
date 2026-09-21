@@ -520,7 +520,7 @@ async function resourceDetailView(id) {
       ${resource.original_title ? `<div class="meta">${esc(resource.original_title)}</div>` : ''}
       <div class="inline-actions">
         ${originalUrl ? `<a class="btn secondary small" target="_blank" rel="noopener noreferrer" href="${esc(originalUrl)}">원문 열기</a>` : ''}
-        <button class="btn secondary small" id="resource-bookmark-toggle" type="button">${bookmarks.some(b=>b.bookmark_type==='resource') ? '★ 책갈피됨' : '☆ 책갈피'}</button> <button class="btn secondary small" id="resource-edit-toggle" type="button">원문·정보 수정</button>
+        <button class="btn secondary small" id="resource-bookmark-toggle" type="button">${bookmarks.some(b=>b.bookmark_type==='resource') ? '★ 책갈피됨' : '☆ 책갈피'}</button> <button class="btn secondary small" id="resource-edit-toggle" type="button">원문·정보 수정</button> <button class="btn danger small" id="resource-delete" type="button">삭제</button>
       </div>
     </section>
     ${bookmarks.some(b=>b.bookmark_type==='passage') ? `<section class="resource-passage-bookmarks"><div class="resource-passage-bookmarks-title">이 글의 책갈피</div><div class="resource-passage-bookmarks-list">${bookmarks.filter(b=>b.bookmark_type==='passage').map(b=>`<a class="item passage-bookmark-link" href="${href('/read/'+id+'/?bookmark='+encodeURIComponent(b.id))}" data-local-passage-bookmark="${b.id}"><blockquote>${esc(b.selected_text||'')}</blockquote>${b.note?`<div class="meta">메모 · ${esc(b.note)}</div>`:''}</a>`).join('')}</div></section>` : ''}
@@ -639,6 +639,30 @@ async function resourceDetailView(id) {
     if (!editCard.hidden) editCard.querySelector('input[name="title"]')?.focus();
   });
   document.querySelector('#resource-edit-cancel')?.addEventListener('click', () => { editCard.hidden = true; });
+  document.querySelector('#resource-delete')?.addEventListener('click', async () => {
+    if (!confirm('이 글을 삭제할까요?\n\n이 글에 연결된 메모와 책갈피도 함께 삭제됩니다. 글쓰기 기록은 남고 원문 연결만 해제됩니다.')) return;
+    const stillCurrent = currentViewGuard();
+    const button = document.querySelector('#resource-delete');
+    if (button) {
+      button.disabled = true;
+      button.textContent = '삭제 중…';
+    }
+    try {
+      await api.deleteResource(id);
+      if (!stillCurrent()) return;
+      if (!await refreshState()) return;
+      history.replaceState({}, '', href('/read/'));
+      render();
+    } catch (error) {
+      if (!stillCurrent()) return;
+      console.error('자료 삭제 실패', error);
+      if (button) {
+        button.disabled = false;
+        button.textContent = '삭제';
+      }
+      alert('글을 삭제하지 못했습니다. 다시 시도해주세요.');
+    }
+  });
   document.querySelector('#resource-edit-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const stillCurrent = currentViewGuard();
