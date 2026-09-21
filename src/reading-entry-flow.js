@@ -34,6 +34,10 @@ function addHomeQuickAdd() {
     const url = String(new FormData(event.currentTarget).get('url') || '').trim();
     if (url) openNewReading(url);
   });
+  section.querySelector('a[href*="new=1"]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    openNewReading();
+  });
   hero.insertAdjacentElement('afterend', section);
 }
 
@@ -42,6 +46,10 @@ function addNewReadingButton(hero) {
   const actions = document.createElement('div');
   actions.className = 'inline-actions';
   actions.innerHTML = `<a class="btn" data-new-reading-link href="${appHref('/read/?new=1')}">+ 새 자료</a>`;
+  actions.querySelector('[data-new-reading-link]')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    openNewReading();
+  });
   hero.append(actions);
 }
 
@@ -64,7 +72,13 @@ function showNewReadingState() {
   if (title) title.textContent = '새 자료';
   if (description) description.textContent = 'URL로 가져오거나 직접 입력한 뒤 내용을 확인하고 저장한다.';
   const back = document.createElement('div');
-  back.className = 'inline-actions'; back.innerHTML = `<a class="btn secondary small" href="${appHref('/read/')}">← 읽기 목록</a>`; hero.append(back);
+  back.className = 'inline-actions'; back.innerHTML = `<a class="btn secondary small" href="${appHref('/read/')}">← 읽기 목록</a>`;
+  back.querySelector('a')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    history.pushState({}, '', appHref('/read/'));
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
+  hero.append(back);
   const newCard = resourceForm.closest('.card'); const grid = newCard?.parentElement;
   if (grid) { for (const child of [...grid.children]) if (child !== newCard) child.remove(); grid.classList.add('page-section'); }
   resourceForm.addEventListener('submit', () => { const target = new URL(appHref('/read/'), location.origin); history.replaceState({}, '', target.pathname); }, { capture: true });
