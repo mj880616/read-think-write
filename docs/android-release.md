@@ -299,3 +299,30 @@
 - DB의 기존 FK 동작을 유지하여 메모·책갈피는 CASCADE 삭제, 글쓰기 기록은 유지하고 source_resource_id만 NULL 처리함.
 - FK가 없는 rtw_relations의 고아 데이터를 남기지 않도록 security invoker RPC rtw_delete_resource(uuid)에서 관련 관계를 먼저 정리한 뒤 글을 삭제함.
 - RPC는 authenticated에만 실행 권한을 부여하고 기존 RLS를 그대로 적용함.
+
+
+## Google Play 출시 준비 단계
+
+- Android 공유 실기기 검증 완료 후 출시 준비 단계로 전환.
+- Capacitor 테스트용 appId `com.bokdoong.read.captest`를 정식 package ID `com.bokdoong.read`로 변경.
+- 정식 package ID 전환 후 새 APK를 설치하여 Google OAuth 앱 복귀, 세션 유지, Android 공유 기능을 다시 한 번 검증해야 함.
+- 개인정보처리방침 공개 URL: `https://read.bokdoong.com/privacy.html`.
+- 지원 페이지 공개 URL: `https://read.bokdoong.com/support.html`.
+- Android CI에서 debug APK와 release AAB를 함께 생성하도록 구성.
+- GitHub Secrets에 업로드 키가 설정된 경우 release AAB를 업로드 키로 서명하고 검증함.
+- 업로드 키 자체와 비밀번호는 저장소에 커밋하지 않음.
+- Google Play 신규 개인 개발자 계정은 현재 최소 12명의 테스터가 14일 연속 비공개 테스트에 참여해야 프로덕션 액세스를 신청할 수 있음.
+- 2026-08-31 이후 신규 앱은 Android 16 / API 36 이상 target이 필요하며 읽생기는 target SDK 36을 사용함.
+
+### release signing에 필요한 GitHub Secrets
+
+- `READSAENGGI_UPLOAD_KEYSTORE_B64`
+- `READSAENGGI_UPLOAD_KEYSTORE_PASSWORD`
+- `READSAENGGI_UPLOAD_KEY_ALIAS`
+- `READSAENGGI_UPLOAD_KEY_PASSWORD`
+
+업로드 키는 로컬의 안전한 위치에서 생성·백업한 뒤 keystore 파일을 base64로 변환해 Secret에 넣음. Play App Signing은 Google 생성 앱 서명 키를 사용하는 기본 구성을 권장하고, 개발자가 보관하는 키는 업로드 키로 한정함.
+
+## 현재 진행률
+
+약 55%. 앱 핵심 기능과 Android 공유, 정식 package ID 전환 코드, 개인정보처리방침/지원 페이지, AAB 빌드 경로까지 준비됨. 남은 핵심은 정식 ID APK 실기기 재검증, 업로드 키 생성·보관 및 CI Secret 설정, Play Console 개발자 등록·앱 생성, AAB 업로드, 비공개 테스트임.

@@ -56,11 +56,11 @@ if (!manifest.includes(shareMarker)) {
   fs.writeFileSync(manifestPath, manifest);
 }
 
-const mainActivityPath = new URL('../android/app/src/main/java/com/bokdoong/read/captest/MainActivity.java', import.meta.url);
+const mainActivityPath = new URL('../android/app/src/main/java/com/bokdoong/read/MainActivity.java', import.meta.url);
 let mainActivity = fs.readFileSync(mainActivityPath, 'utf8');
 
 if (!mainActivity.includes('READSAENGGI_SHARE_HANDLER')) {
-  mainActivity = `package com.bokdoong.read.captest;
+  mainActivity = `package com.bokdoong.read;
 
 import android.content.Intent;
 import android.net.Uri;

@@ -37,10 +37,38 @@ jobs:
       - name: Build debug APK
         working-directory: mobile/android
         run: ./gradlew assembleDebug
+      - name: Build release AAB
+        working-directory: mobile/android
+        run: ./gradlew bundleRelease
+      - name: Sign release AAB when upload key secrets are configured
+        shell: bash
+        env:
+          UPLOAD_KEYSTORE_B64: ${{ secrets.READSAENGGI_UPLOAD_KEYSTORE_B64 }}
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.READSAENGGI_UPLOAD_KEYSTORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: ${{ secrets.READSAENGGI_UPLOAD_KEY_ALIAS }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.READSAENGGI_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          AAB="mobile/android/app/build/outputs/bundle/release/app-release.aab"
+          if [[ -z "${UPLOAD_KEYSTORE_B64:-}" || -z "${UPLOAD_KEYSTORE_PASSWORD:-}" || -z "${UPLOAD_KEY_ALIAS:-}" || -z "${UPLOAD_KEY_PASSWORD:-}" ]]; then
+            echo "Upload-key secrets are not configured; keeping unsigned release AAB for build verification."
+            exit 0
+          fi
+          KEYSTORE="${RUNNER_TEMP}/readsaenggi-upload.jks"
+          printf '%s' "$UPLOAD_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          jarsigner -keystore "$KEYSTORE"             -storepass "$UPLOAD_KEYSTORE_PASSWORD"             -keypass "$UPLOAD_KEY_PASSWORD"             "$AAB" "$UPLOAD_KEY_ALIAS"
+          jarsigner -verify -verbose -certs "$AAB"
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: readsaenggi-capacitor-test-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: readsaenggi-release-aab
+          path: mobile/android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
