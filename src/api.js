@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './config.js';
 import { isRememberedLoginValid } from './model.js';
 
 const REMEMBER_LOGIN_KEY = 'rtw_remember_until_v1';
@@ -72,21 +73,56 @@ export async function signOut() {
 
 export const AI_DAILY_LIMITS = Object.freeze({ read: 3, expand: 3 });
 
+async function waitForAccessToken(timeoutMs = 5000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    const token = data?.session?.access_token;
+    if (token) return token;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error('로그인 세션을 확인하지 못했습니다. 앱을 다시 열어주세요.');
+}
+
 export async function getBetaAccess(email) {
   const clean = String(email || '').trim().toLowerCase();
   if (!clean) return null;
 
-  const request = supabase.rpc('rtw_beta_access_status');
-  const timeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error('이용 권한 확인 시간이 초과되었습니다. 다시 시도해주세요.')), 8000);
-  });
+  const token = await waitForAccessToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
 
-  const { data, error } = await Promise.race([request, timeout]);
-  fail(error);
-  const access = Array.isArray(data) ? (data[0] ?? null) : data;
-  if (!access) return null;
-  if (String(access.email || '').toLowerCase() !== clean) return null;
-  return access;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rtw_beta_access_status`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: '{}',
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload?.message || payload?.error || '이용 권한을 확인하지 못했습니다.');
+    }
+
+    const data = await response.json();
+    const access = Array.isArray(data) ? (data[0] ?? null) : data;
+    if (!access) return null;
+    if (String(access.email || '').toLowerCase() !== clean) return null;
+    return access;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('이용 권한 확인 시간이 초과되었습니다. 다시 시도해주세요.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function listBetaAccess() {

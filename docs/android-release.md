@@ -175,3 +175,13 @@
 - 로그인한 사용자의 JWT 이메일만 기준으로 권한을 반환하는 `rtw_beta_access_status()` 전용 RPC 추가.
 - 권한 확인 요청은 8초 타임아웃을 적용하고, 실패 시 무한 로딩 대신 오류와 '다시 시도' 버튼을 표시.
 - 다음 실기기 확인: 앱 완전 종료 → 재실행 → 로그인 유지 또는 재로그인 → 권한 확인 통과 여부 확인.
+
+
+## 앱 복귀 후 베타 권한 조회 인증 누락 수정
+
+- 현상: 앱 복귀 후 `permission denied for function rtw_beta_access_status` 오류 발생.
+- 확인 결과: 함수는 `authenticated` 역할에만 실행 권한이 있고 `anon`에는 없음. 이 권한 설계는 유지함.
+- 원인: 네이티브 OAuth 직후 베타 권한 조회가 인증 헤더 없이 익명 요청으로 나갈 수 있었음.
+- 조치: 앱은 Supabase 세션의 access token을 먼저 확인한 뒤, 해당 토큰을 Authorization Bearer 헤더로 명시해 `rtw_beta_access_status` RPC를 호출함.
+- 보안 원칙: 오류를 피하기 위해 anon에게 함수 실행 권한을 추가하지 않음.
+- 다음 실기기 검증: 앱 완전 종료 → 재실행 → Google 로그인 → 앱 복귀 → 권한 확인 통과 → 홈 진입.
