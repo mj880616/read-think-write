@@ -94,29 +94,23 @@ export async function getBetaAccess(email) {
   const timer = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const params = new URLSearchParams({
-      select: 'email,role,active,invited_at,note',
-      email: `eq.${clean}`,
-      limit: '1'
-    });
-
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rtw_beta_access?${params}`, {
-      method: 'GET',
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/rtw-beta-status`, {
+      method: 'POST',
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${token}`,
-        Accept: 'application/json'
+        'Content-Type': 'application/json'
       },
+      body: '{}',
       signal: controller.signal
     });
 
+    const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload?.message || payload?.error || '이용 권한을 확인하지 못했습니다.');
+      throw new Error(payload?.error || payload?.message || '이용 권한을 확인하지 못했습니다.');
     }
 
-    const data = await response.json();
-    const access = Array.isArray(data) ? (data[0] ?? null) : null;
+    const access = payload?.access ?? null;
     if (!access) return null;
     if (String(access.email || '').toLowerCase() !== clean) return null;
     return access;
