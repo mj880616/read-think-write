@@ -232,3 +232,14 @@
 - 조치: `read.bokdoong.com`에서 `/read-think-write` 및 하위 경로가 감지되면 동일한 루트 경로로 자동 정규화.
 - 예: `/read-think-write/` → `/`, `/read-think-write/notes/` → `/notes/`.
 - 다음 검증: 앱 재실행 시 홈 진입, 상단 탭 이동 정상 여부 확인.
+
+
+## Android 기본 사용성 안정화
+
+- Capacitor Android 앱에서 시스템 뒤로가기 버튼을 앱 내부 라우팅과 연결.
+- 홈이 아닌 화면에서는 이전 화면으로 이동하고, 홈에서는 앱을 최소화함.
+- 읽생기 외부의 http/https 링크는 앱 WebView 안에서 열지 않고 Capacitor Browser로 분리함.
+- 웹 브라우저에서 읽생기를 사용할 때는 기존 동작 유지.
+- 로그인 유지 구조는 기존 30일 remembered session 정책을 그대로 사용하며 OAuth 세션 저장 순서 경쟁 수정까지 반영된 상태임.
+- 다음 실기기 검증: 앱 재실행 로그인 유지, 내부 탭 이동 후 뒤로가기, 외부 링크 브라우저 열림 확인.
+- 다음 개발 단계: Android 공유 → 읽생기 저장.
