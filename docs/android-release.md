@@ -326,3 +326,19 @@
 ## 현재 진행률
 
 약 55%. 앱 핵심 기능과 Android 공유, 정식 package ID 전환 코드, 개인정보처리방침/지원 페이지, AAB 빌드 경로까지 준비됨. 남은 핵심은 정식 ID APK 실기기 재검증, 업로드 키 생성·보관 및 CI Secret 설정, Play Console 개발자 등록·앱 생성, AAB 업로드, 비공개 테스트임.
+
+
+## 업로드 키 생성 완료
+
+- 2026-09-22 Google Play 업로드용 RSA 4096-bit 키 생성 완료.
+- 키 alias: `readsaenggi-upload`
+- 업로드 인증서 SHA-1: `3B:7A:0E:5B:C5:E1:C1:D7:4D:9A:D9:D6:BB:75:AF:E7:3E:6F:3F:3E`
+- 업로드 인증서 SHA-256: `C2:BD:6D:49:F2:52:08:C0:D0:F4:54:8A:C6:6E:CF:EC:6A:FD:24:49:7A:CA:8C:85:91:AD:13:DF:31:33:5D:13`
+- keystore와 비밀번호는 저장소에 커밋하지 않음.
+- release AAB를 해당 업로드 키로 서명하고 `jarsigner -verify` 검증 완료.
+- Play App Signing에서는 Google 생성 앱 서명 키를 사용하고, 위 키는 업로드 키로 사용하는 구성을 전제로 함.
+- 최초 Play 업로드 후 Play Console에서 실제 앱 서명 키의 SHA-1/SHA-256 지문을 확인하여 Google OAuth 등 외부 API 공급자에 필요한 경우 추가 등록해야 함.
+
+## 현재 진행률
+
+약 62%. 정식 package ID, 개인정보처리방침/지원 페이지, release AAB 빌드, 업로드 키 생성, 최초 서명 AAB까지 준비됨. 남은 핵심은 정식 ID APK 실기기 재검증, GitHub Secrets 등록, Play Console 개발자 등록 및 앱 생성, 스토어/데이터 안전 양식 작성, 비공개 테스트 12명·14일임.
