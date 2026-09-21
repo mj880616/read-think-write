@@ -6,7 +6,7 @@ function routePath() { return location.pathname.replace(basePath(), '') || '/'; 
 function isHome() { const path = routePath(); return path === '/' || path === ''; }
 function isReadList() { const path = routePath(); return path === '/read/' || path === '/read'; }
 
-function openNewReading(url = '') {
+export function openNewReading(url = '') {
   const target = new URL(appHref('/read/'), location.origin);
   target.searchParams.set('new', '1');
   if (url) target.searchParams.set('url', url);
@@ -84,7 +84,20 @@ function showNewReadingState() {
   resourceForm.addEventListener('submit', () => { const target = new URL(appHref('/read/'), location.origin); history.replaceState({}, '', target.pathname); }, { capture: true });
 }
 
+function handleAndroidShareParam() {
+  const params = new URLSearchParams(location.search);
+  const sharedUrl = String(params.get('share') || '').trim();
+  if (!sharedUrl) return false;
+
+  params.delete('share');
+  const query = params.toString();
+  history.replaceState({}, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash || ''}`);
+  openNewReading(sharedUrl);
+  return true;
+}
+
 export function enhanceReadingEntryFlow() {
+  if (handleAndroidShareParam()) return;
   if (isHome()) { addHomeQuickAdd(); return; }
   if (!isReadList()) return;
   const newMode = new URLSearchParams(location.search).get('new') === '1';
