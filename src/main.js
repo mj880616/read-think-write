@@ -74,7 +74,7 @@ function setAuthUser(next) {
   accessReadyUserId = null;
   betaAccess = null;
   clearUserState();
-  root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
+  root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
   return true;
 }
 
@@ -1169,7 +1169,7 @@ function notFound() {
 async function render() {
   if (!user) {
     const epoch = authEpoch;
-    root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
+    root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
     const current = await api.currentUser();
     if (authEpoch !== epoch) return;
     if (!current) {
@@ -1182,7 +1182,7 @@ async function render() {
   if (accessReadyUserId !== user.id) {
     const userId = user.id;
     const epoch = authEpoch;
-    root.innerHTML = '<div class="shell"><div class="empty">이용 권한 확인 중…</div></div>';
+    root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
     try {
       const access = await api.getBetaAccess(user.email);
       if (!isCurrentRequest(userId, epoch)) return;
@@ -1208,7 +1208,7 @@ async function render() {
   if (dataReadyUserId !== user.id) {
     const userId = user.id;
     const epoch = authEpoch;
-    root.innerHTML = '<div class="shell"><div class="empty">불러오는 중…</div></div>';
+    root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
     if (!isCurrentRequest(userId, epoch)) return;
     dataReadyUserId = userId;
     if (!await refreshState()) return;
