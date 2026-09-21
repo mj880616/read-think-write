@@ -270,3 +270,18 @@
 - 새 저장 로직을 따로 만들지 않고 기존 import 기능을 재사용해 중복과 기술부채를 줄임.
 - cold start와 이미 앱이 열린 상태(onNewIntent) 모두 처리함.
 - 다음 실기기 검증: Chrome/삼성인터넷 기사 → 공유 → 읽생기 → 새 자료 화면 → URL 자동 가져오기 확인.
+
+
+## Android 공유 기능 병합 및 CI 확인
+
+- PR #71은 2026-09-21 `main`에 병합 완료.
+- 병합 커밋: `6b859922fb122d61a8e8a22e976bd13902032dfe`.
+- PR 최종 커밋 기준 `Read Think Write tests`, `Test and Deploy GitHub Pages`, `Android mobile shell` 모두 성공 확인.
+- Android 빌드 아티팩트 `readsaenggi-capacitor-test-apk` 생성 확인.
+- 현재 단계는 구현이 아니라 실기기 공유 흐름 검증임.
+- 검증 항목: Chrome/삼성인터넷의 URL 공유 → 공유 대상에서 읽생기 선택 → 앱 열림 → 새 자료 화면 진입 → URL 자동 전달 → 기존 URL 가져오기 정상 동작.
+- 실기기 검증이 성공하면 Android 공유 기능을 완료 처리하고 release signing / 개인정보처리방침·지원 페이지 / Play Console 준비 단계로 이동함.
+
+## 현재 진행률
+
+약 45%. Capacitor 앱 실행, Google OAuth 앱 복귀, 세션 유지, 베타 권한 확인, custom domain 경로 정리, 기본 Android 내비게이션 및 Android 공유 기능 구현·CI까지 완료. Android 공유 기능은 실기기 최종 검증만 남음.
