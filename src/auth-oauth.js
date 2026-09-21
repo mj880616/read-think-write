@@ -72,11 +72,17 @@ async function completeNativeOAuth(rawUrl) {
   const code = url.searchParams.get('code');
   if (!code) return null;
 
+  // Set the remembered-login window before exchanging the PKCE code.
+  // exchangeCodeForSession persists the session and emits SIGNED_IN before
+  // resolving. Our guarded auth storage would otherwise read the fresh session
+  // before REMEMBER_LOGIN_KEY exists and delete it as "expired".
+  rememberLogin();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   await closeNativeBrowser();
-  if (error) throw error;
-
-  rememberLogin();
+  if (error) {
+    localStorage.removeItem(REMEMBER_LOGIN_KEY);
+    throw error;
+  }
   return data?.session?.user ?? data?.user ?? null;
 }
 
@@ -85,9 +91,12 @@ export async function bootstrapOAuth() {
   const code = new URLSearchParams(location.search).get('code');
   if (!code) return null;
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) throw error;
   rememberLogin();
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    localStorage.removeItem(REMEMBER_LOGIN_KEY);
+    throw error;
+  }
 
   const cleanUrl = `${location.pathname}${location.hash || ''}`;
   history.replaceState({}, '', cleanUrl);
