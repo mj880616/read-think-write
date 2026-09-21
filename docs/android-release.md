@@ -203,3 +203,13 @@
 - 조치: `read.bokdoong.com`에서는 APP_BASE를 `/`로 사용하고, GitHub Pages 직접 접속일 때만 `/read-think-write/`를 유지.
 - redirect 복원 로직도 custom domain root 기준으로 분기.
 - 다음 검증: 앱 완전 종료 → 재실행 → 로그인 상태 유지 또는 Google 로그인 → 읽생기 홈 유지 확인.
+
+
+## 베타 권한 확인 서버 경로로 전환
+
+- 앱/WebView에서 직접 RLS 조회하는 경로가 반복적으로 불안정해 권한 확인을 `rtw-beta-status` Edge Function으로 이동함.
+- 앱은 Supabase access token만 서버로 전달함.
+- Edge Function은 서버에서 토큰의 실제 사용자를 확인하고, 해당 이메일의 `rtw_beta_access` 한 행만 조회해 반환함.
+- 서비스 역할 키는 Edge Function 내부에서만 사용하며 클라이언트에는 노출하지 않음.
+- 허용 Origin은 `https://read.bokdoong.com`, `https://mj880616.github.io`로 제한함.
+- 다음 실기기 검증: 앱 완전 종료 → 재실행 → Google 로그인/기존 세션 → 권한 확인 → 홈 진입.
