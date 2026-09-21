@@ -89,45 +89,24 @@ export async function getBetaAccess(email) {
   const clean = String(email || '').trim().toLowerCase();
   if (!clean) return null;
 
-  const token = await waitForAccessToken();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  await waitForAccessToken();
 
-  try {
-    const params = new URLSearchParams({
-      select: 'email,role,active,invited_at,note',
-      email: `eq.${clean}`,
-      limit: '1'
-    });
+  const query = supabase
+    .from('rtw_beta_access')
+    .select('email,role,active,invited_at,note')
+    .eq('email', clean)
+    .limit(1)
+    .maybeSingle();
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rtw_beta_access?${params}`, {
-      method: 'GET',
-      headers: {
-        apikey: SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json'
-      },
-      signal: controller.signal
-    });
+  const timeout = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('이용 권한 확인 시간이 초과되었습니다. 다시 시도해주세요.')), 8000);
+  });
 
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      throw new Error(payload?.message || payload?.error || '이용 권한을 확인하지 못했습니다.');
-    }
-
-    const data = await response.json();
-    const access = Array.isArray(data) ? (data[0] ?? null) : null;
-    if (!access) return null;
-    if (String(access.email || '').toLowerCase() !== clean) return null;
-    return access;
-  } catch (error) {
-    if (error?.name === 'AbortError') {
-      throw new Error('이용 권한 확인 시간이 초과되었습니다. 다시 시도해주세요.');
-    }
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
+  const { data, error } = await Promise.race([query, timeout]);
+  fail(error);
+  if (!data) return null;
+  if (String(data.email || '').toLowerCase() !== clean) return null;
+  return data;
 }
 
 export async function listBetaAccess() {
