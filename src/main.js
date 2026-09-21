@@ -9,6 +9,17 @@ import { restoreRedirect } from './redirect.js';
 
 restoreRedirect();
 
+function normalizeLegacyCustomDomainPath() {
+  if (APP_BASE !== '/') return;
+  const legacyBase = '/read-think-write';
+  if (location.pathname !== legacyBase && !location.pathname.startsWith(legacyBase + '/')) return;
+
+  const nextPath = location.pathname.slice(legacyBase.length) || '/';
+  history.replaceState({}, '', `${nextPath}${location.search}${location.hash}`);
+}
+
+normalizeLegacyCustomDomainPath();
+
 const root = document.querySelector('#app');
 const PRIMARY_TABS = [
   { key: 'home', label: '홈', path: '/' },
