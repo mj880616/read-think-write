@@ -6,13 +6,12 @@ const main = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8')
 
 assert.match(api, /waitForAccessToken/);
 assert.match(api, /supabase\.auth\.getSession\(\)/);
-assert.match(api, /\/rest\/v1\/rtw_beta_access\?/);
+assert.match(api, /\/functions\/v1\/rtw-beta-status/);
 assert.match(api, /Authorization:\s*`Bearer \$\{token\}`/);
 assert.match(api, /apikey:\s*SUPABASE_PUBLISHABLE_KEY/);
-assert.match(api, /email:\s*`eq\.\$\{clean\}`/);
 assert.doesNotMatch(api, /rtw_beta_access_status/);
 assert.match(api, /8000/);
 assert.match(main, /이용 권한을 확인하지 못했습니다/);
 assert.match(main, /retry-beta-access/);
 
-console.log('beta access direct RLS contract ok');
+console.log('beta access Edge Function contract ok');
