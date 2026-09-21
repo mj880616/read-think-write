@@ -8,12 +8,11 @@ assert.match(patch, /android\.intent\.action\.SEND/);
 assert.match(patch, /android:mimeType="text\/plain"/);
 assert.match(patch, /Intent\.EXTRA_TEXT/);
 assert.ok(patch.includes('https?://'));
-assert.match(patch, /\?share=/);
+assert.match(patch, /read\/\?new=1&url=/);
+assert.ok(!patch.includes('APP_ROOT + "?share="'));
 
 assert.match(reading, /params\.get\('share'\)/);
 assert.match(reading, /openNewReading\(sharedUrl\)/);
 assert.match(reading, /params\.delete\('share'\)/);
-
-console.log('Android share target contract ok');
 
 console.log('Android direct share URL handoff ok');
