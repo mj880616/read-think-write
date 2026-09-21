@@ -285,3 +285,17 @@
 ## 현재 진행률
 
 약 45%. Capacitor 앱 실행, Google OAuth 앱 복귀, 세션 유지, 베타 권한 확인, custom domain 경로 정리, 기본 Android 내비게이션 및 Android 공유 기능 구현·CI까지 완료. Android 공유 기능은 실기기 최종 검증만 남음.
+
+
+## Android 공유 실기기 검증 완료
+
+- 2026-09-22 실기기에서 브라우저 공유 → 읽생기 선택 → 새 자료 화면 → URL 자동 전달 흐름 정상 확인.
+- Android 공유 기능은 완료 처리함.
+
+## 저장 글 삭제 기능
+
+- 글 상세 화면에 삭제 버튼 추가.
+- 삭제 전 확인창에서 연결 메모·책갈피 동시 삭제를 안내함.
+- DB의 기존 FK 동작을 유지하여 메모·책갈피는 CASCADE 삭제, 글쓰기 기록은 유지하고 source_resource_id만 NULL 처리함.
+- FK가 없는 rtw_relations의 고아 데이터를 남기지 않도록 security invoker RPC rtw_delete_resource(uuid)에서 관련 관계를 먼저 정리한 뒤 글을 삭제함.
+- RPC는 authenticated에만 실행 권한을 부여하고 기존 RLS를 그대로 적용함.

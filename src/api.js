@@ -274,6 +274,11 @@ export async function updateResource(id, input) {
   return data;
 }
 
+export async function deleteResource(id) {
+  const { error } = await supabase.rpc('rtw_delete_resource', { p_resource_id: id });
+  fail(error);
+}
+
 export async function listNoteTypes() {
   const { data, error } = await supabase.from('rtw_note_types').select('*').order('created_at');
   fail(error);
