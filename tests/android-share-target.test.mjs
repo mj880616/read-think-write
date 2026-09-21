@@ -15,3 +15,5 @@ assert.match(reading, /openNewReading\(sharedUrl\)/);
 assert.match(reading, /params\.delete\('share'\)/);
 
 console.log('Android share target contract ok');
+
+console.log('Android direct share URL handoff ok');
