@@ -94,14 +94,19 @@ export async function getBetaAccess(email) {
   const timer = setTimeout(() => controller.abort(), 8000);
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/rtw_beta_access_status`, {
-      method: 'POST',
+    const params = new URLSearchParams({
+      select: 'email,role,active,invited_at,note',
+      email: `eq.${clean}`,
+      limit: '1'
+    });
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/rtw_beta_access?${params}`, {
+      method: 'GET',
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        Accept: 'application/json'
       },
-      body: '{}',
       signal: controller.signal
     });
 
@@ -111,7 +116,7 @@ export async function getBetaAccess(email) {
     }
 
     const data = await response.json();
-    const access = Array.isArray(data) ? (data[0] ?? null) : data;
+    const access = Array.isArray(data) ? (data[0] ?? null) : null;
     if (!access) return null;
     if (String(access.email || '').toLowerCase() !== clean) return null;
     return access;

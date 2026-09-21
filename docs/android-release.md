@@ -185,3 +185,12 @@
 - 조치: 앱은 Supabase 세션의 access token을 먼저 확인한 뒤, 해당 토큰을 Authorization Bearer 헤더로 명시해 `rtw_beta_access_status` RPC를 호출함.
 - 보안 원칙: 오류를 피하기 위해 anon에게 함수 실행 권한을 추가하지 않음.
 - 다음 실기기 검증: 앱 완전 종료 → 재실행 → Google 로그인 → 앱 복귀 → 권한 확인 통과 → 홈 진입.
+
+
+## 베타 권한 확인 구조 단순화
+
+- `rtw_beta_access_status()` RPC 경로를 제거함.
+- `rtw_beta_access` 테이블에는 이미 authenticated 사용자가 자기 이메일 행만 SELECT할 수 있는 RLS 정책이 존재함을 재확인함.
+- 앱은 OAuth 세션 access token을 명시적으로 붙여 `rtw_beta_access`에서 자기 이메일 행만 직접 조회함.
+- 별도 SECURITY DEFINER RPC 없이 기존 RLS를 그대로 활용하므로 구조가 단순하고 권한 경계도 더 명확함.
+- 다음 실기기 검증: 앱 완전 종료 → 재실행 → 로그인 유지 또는 재로그인 → 권한 확인 → 홈 진입.
