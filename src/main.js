@@ -2,7 +2,7 @@ import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.2.6/+esm';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked@16.2.1/lib/marked.esm.js';
 import { supabase } from './supabase.js';
 import * as api from './api.js';
-import { APP_BASE } from './config.js';
+import { APP_BASE, APP_BUILD } from './config.js';
 import { formatDate, groupResourcesByMonth, matchesQuery, safeHttpUrl } from './model.js';
 import { bookmarkSelectionData, locateBookmarkRange } from './bookmark-location.js';
 import { restoreRedirect } from './redirect.js';
@@ -1179,7 +1179,7 @@ async function render() {
       accessReadyUserId = userId;
     } catch (error) {
       if (!isCurrentRequest(userId, epoch)) return;
-      root.innerHTML = '<div class="shell"><div class="empty">이용 권한을 확인하지 못했습니다.<br><button class="btn small" id="retry-beta-access" type="button">다시 시도</button><div class="status error">' + esc(error.message) + '</div></div></div>';
+      root.innerHTML = '<div class="shell"><div class="empty">이용 권한을 확인하지 못했습니다.<br><button class="btn small" id="retry-beta-access" type="button">다시 시도</button><div class="status error">' + esc(error.message) + '</div><div class="meta">build ' + esc(APP_BUILD) + '</div></div></div>';
       document.querySelector('#retry-beta-access')?.addEventListener('click', () => {
         accessReadyUserId = null;
         betaAccess = null;
