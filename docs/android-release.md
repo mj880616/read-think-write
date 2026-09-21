@@ -194,3 +194,12 @@
 - 앱은 OAuth 세션 access token을 명시적으로 붙여 `rtw_beta_access`에서 자기 이메일 행만 직접 조회함.
 - 별도 SECURITY DEFINER RPC 없이 기존 RLS를 그대로 활용하므로 구조가 단순하고 권한 경계도 더 명확함.
 - 다음 실기기 검증: 앱 완전 종료 → 재실행 → 로그인 유지 또는 재로그인 → 권한 확인 → 홈 진입.
+
+
+## 로그인 후 Web2로 이동하는 경로 오류 수정
+
+- 현상: 네이티브 OAuth 이후 앱이 읽생기 대신 Web2 화면으로 이동.
+- 확인: 읽생기 웹 코드는 GitHub Pages 시절의 `/read-think-write/` 경로를 APP_BASE로 고정 사용하고 있었음.
+- 조치: `read.bokdoong.com`에서는 APP_BASE를 `/`로 사용하고, GitHub Pages 직접 접속일 때만 `/read-think-write/`를 유지.
+- redirect 복원 로직도 custom domain root 기준으로 분기.
+- 다음 검증: 앱 완전 종료 → 재실행 → 로그인 상태 유지 또는 Google 로그인 → 읽생기 홈 유지 확인.
