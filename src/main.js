@@ -1172,10 +1172,21 @@ async function render() {
     const userId = user.id;
     const epoch = authEpoch;
     root.innerHTML = '<div class="shell"><div class="empty">이용 권한 확인 중…</div></div>';
-    const access = await api.getBetaAccess(user.email);
-    if (!isCurrentRequest(userId, epoch)) return;
-    betaAccess = access;
-    accessReadyUserId = userId;
+    try {
+      const access = await api.getBetaAccess(user.email);
+      if (!isCurrentRequest(userId, epoch)) return;
+      betaAccess = access;
+      accessReadyUserId = userId;
+    } catch (error) {
+      if (!isCurrentRequest(userId, epoch)) return;
+      root.innerHTML = '<div class="shell"><div class="empty">이용 권한을 확인하지 못했습니다.<br><button class="btn small" id="retry-beta-access" type="button">다시 시도</button><div class="status error">' + esc(error.message) + '</div></div></div>';
+      document.querySelector('#retry-beta-access')?.addEventListener('click', () => {
+        accessReadyUserId = null;
+        betaAccess = null;
+        render();
+      });
+      return;
+    }
   }
 
   if (!betaAccess?.active) {
