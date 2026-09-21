@@ -99,7 +99,8 @@ public class MainActivity extends BridgeActivity {
         Matcher matcher = URL_PATTERN.matcher(sharedText);
         if (!matcher.find()) return;
 
-        String sharedUrl = matcher.group(1);
+        String sharedUrl = matcher.group(1).replaceAll("[)\\]}>.,;!?]+$", "");
+        if (sharedUrl.isBlank()) return;
         String targetUrl = APP_ROOT + "?share=" + Uri.encode(sharedUrl);
 
         getBridge().getWebView().post(() -> getBridge().getWebView().loadUrl(targetUrl));
