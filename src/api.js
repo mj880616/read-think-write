@@ -75,13 +75,18 @@ export const AI_DAILY_LIMITS = Object.freeze({ read: 3, expand: 3 });
 export async function getBetaAccess(email) {
   const clean = String(email || '').trim().toLowerCase();
   if (!clean) return null;
-  const { data, error } = await supabase
-    .from('rtw_beta_access')
-    .select('email,role,active,invited_at,note')
-    .eq('email', clean)
-    .maybeSingle();
+
+  const request = supabase.rpc('rtw_beta_access_status');
+  const timeout = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('이용 권한 확인 시간이 초과되었습니다. 다시 시도해주세요.')), 8000);
+  });
+
+  const { data, error } = await Promise.race([request, timeout]);
   fail(error);
-  return data;
+  const access = Array.isArray(data) ? (data[0] ?? null) : data;
+  if (!access) return null;
+  if (String(access.email || '').toLowerCase() !== clean) return null;
+  return access;
 }
 
 export async function listBetaAccess() {
