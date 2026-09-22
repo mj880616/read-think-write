@@ -100,7 +100,7 @@ public class MainActivity extends BridgeActivity {
         if (!matcher.find()) return;
 
         String sharedUrl = matcher.group(1);
-        String targetUrl = APP_ROOT + "read/?new=1&url=" + Uri.encode(sharedUrl);
+        String targetUrl = APP_ROOT + "?share=" + Uri.encode(sharedUrl);
 
         getBridge().getWebView().post(() -> getBridge().getWebView().loadUrl(targetUrl));
     }

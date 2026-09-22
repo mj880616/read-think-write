@@ -351,3 +351,14 @@
 - 앱 cold start 시 두 단계 사이의 렌더링/observer 타이밍 경쟁 가능성을 제거하기 위해 네이티브가 처음부터 `/read/?new=1&url=<url>`로 직접 이동하도록 단순화.
 - 기존 웹의 `?share=` 처리 코드는 호환용으로 남기되 Android 주 경로에서는 사용하지 않음.
 - 새 APK에서 브라우저 공유 → 읽생기 → 새 자료 화면 → URL 자동 입력/가져오기 재검증 필요.
+
+
+## Android 공유 404 수정
+
+- 공유 시 읽생기 앱은 열리지만 `Not Found`가 표시되는 현상 확인.
+- 원인은 네이티브 WebView가 `https://read.bokdoong.com/read/?new=1&url=...`을 직접 로드하면서 SPA 내부 경로를 서버 정적 경로로 요청한 것임.
+- 네이티브 공유 진입은 다시 존재가 보장된 루트 `/?share=<url>`만 로드하도록 변경.
+- `src/app-entry.js`가 본 앱 렌더링 전에 share 파라미터를 읽고 History API로 `/read/?new=1&url=<url>`로 즉시 정규화함.
+- 따라서 서버에는 루트만 요청하고, `/read/` 이동은 브라우저 내부 History API에서만 처리함.
+- 기존 reading-entry-flow의 share 처리는 비정상·구버전 진입에 대한 fallback으로 유지함.
+- 새 APK에서 브라우저 공유 → 읽생기 → 새 자료 → URL 자동 가져오기 재검증 필요.
