@@ -385,3 +385,19 @@
 - 외부 공개 삭제 URL `https://read.bokdoong.com/account-deletion.html` 추가.
 - 외부 삭제 페이지에서 웹 읽생기 `/?delete-account=1`로 진입하면 로그인 후 계정 삭제 영역으로 자동 이동함.
 - 개인정보처리방침과 지원 페이지에도 외부 삭제 URL을 연결함.
+
+
+## 계정 삭제 기능 최종 완료
+
+- 2026-09-22 Google Play 계정 삭제 정책 대응 완료.
+- 앱 내 경로: 안내 → 계정과 삭제 → 내 계정과 데이터 삭제.
+- 외부 삭제 URL: `https://read.bokdoong.com/account-deletion.html`.
+- 외부 페이지에서 웹 읽생기로 이동해 Google 로그인으로 본인 확인 후 계정 삭제를 완료할 수 있음.
+- `rtw-delete-account` Edge Function은 `verify_jwt=true`로 배포했으며, `read.bokdoong.com`과 GitHub Pages Origin을 허용함.
+- 사용자 소유 `rtw_*` 데이터는 `auth.users` 삭제 시 FK `ON DELETE CASCADE`로 정리되고, 이메일 키 기반 `rtw_beta_access`는 함수에서 명시적으로 삭제함.
+- 계정 삭제 API는 Supabase SDK `functions.invoke()` 경로를 사용해 인증 헤더와 API 키 전달을 일관되게 처리함.
+- 관련 회귀 테스트 및 Pages 테스트 모두 성공함.
+
+## 현재 진행률
+
+약 70%. 앱 기능·Android 패키징·공유·정식 package ID·개인정보처리방침·지원 페이지·계정 삭제 정책 대응·release AAB 및 업로드 키 준비까지 완료됨. 이후 주요 작업은 Play Console 계정/앱 생성, 스토어·정책 양식 입력, 심사용 접근정보 준비, 서명 AAB 업로드, 비공개 테스트 운영임.
