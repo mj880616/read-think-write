@@ -50,17 +50,9 @@ export async function claimPersonalOwner() {
 }
 
 export async function deleteAccount() {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  fail(sessionError);
-  const token = sessionData?.session?.access_token;
-  if (!token) throw new Error('로그인 세션을 확인할 수 없습니다.');
-  const response = await fetch(`${supabase.supabaseUrl}/functions/v1/rtw-delete-account`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: '{}'
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.error) throw new Error(payload?.error || '계정을 삭제하지 못했습니다.');
+  const { data, error } = await supabase.functions.invoke('rtw-delete-account', { body: {} });
+  await failFunction(error);
+  if (data?.error) throw new Error(data.error);
   clearRememberedLogin();
   await supabase.auth.signOut().catch(() => {});
 }

@@ -1059,6 +1059,7 @@ function betaDeniedView() {
 }
 
 function aboutView() {
+  const deletionRequested = new URLSearchParams(location.search).get('delete-account') === '1';
   root.innerHTML = shell(`
     <section class="hero"><div class="eyebrow">Free beta</div><h1>이용·개인정보 안내</h1><p>읽생기는 읽기와 생각, 메모와 글쓰기를 연결하는 개인 작업공간의 무료 베타 버전입니다.</p></section>
     <section class="card policy-page">
@@ -1068,12 +1069,61 @@ function aboutView() {
       <p>Google 계정 이메일과 이용자가 직접 저장한 글·메모·질문·책갈피·글쓰기 기록, AI 기능의 일일 사용량 등 서비스 제공에 필요한 정보를 저장합니다. 개인 기록은 계정별로 분리하여 다른 일반 사용자가 조회할 수 없도록 구성되어 있습니다.</p>
       <h2>AI 기능</h2>
       <p>AI 읽기와 생각 확장을 실행하면 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 무료 베타에서는 비용과 안정성을 위해 일일 사용 횟수를 제한합니다.</p>
-      <h2>계정과 삭제</h2>
-      <p>로그아웃은 현재 기기의 로그인 세션을 종료합니다. 계정 삭제 기능을 사용하면 해당 계정의 읽생기 개인 데이터와 인증 계정을 삭제합니다.</p>
+      <h2 id="account-deletion">계정과 삭제</h2>
+      <p>로그아웃은 현재 기기의 로그인 세션만 종료합니다. 계정 삭제를 실행하면 해당 계정의 읽생기 개인 데이터와 인증 계정을 영구적으로 삭제합니다.</p>
+      <div class="account-delete-panel">
+        <p><strong>삭제되는 항목:</strong> 저장한 글, 메모, 질문, 책갈피, 글쓰기 기록, 관련 개인 설정 및 인증 계정.</p>
+        <p class="muted">삭제 후 복구할 수 없습니다. 필요한 기록은 먼저 별도로 보관하세요.</p>
+        <button class="btn danger" id="delete-account" type="button">내 계정과 데이터 삭제</button>
+        <div class="status" id="delete-account-status" aria-live="polite"></div>
+      </div>
       <h2>피드백</h2>
       <p>보낸 피드백은 베타 운영자가 서비스 개선을 위해 확인합니다. 비밀번호, 주민등록번호, 건강정보 등 민감한 개인정보는 피드백에 포함하지 마세요.</p>
     </section>`, 'about');
   bindCommon();
+
+  const deleteButton = document.querySelector('#delete-account');
+  const deleteStatus = document.querySelector('#delete-account-status');
+  deleteButton?.addEventListener('click', async () => {
+    const first = confirm('읽생기 계정과 연결된 개인 데이터를 모두 삭제할까요? 이 작업은 되돌릴 수 없습니다.');
+    if (!first) return;
+    const second = prompt('삭제를 확인하려면 "계정 삭제"를 입력하세요.');
+    if (second !== '계정 삭제') {
+      if (deleteStatus) {
+        deleteStatus.textContent = '삭제가 취소되었습니다.';
+        deleteStatus.classList.remove('error');
+      }
+      return;
+    }
+
+    deleteButton.disabled = true;
+    deleteButton.textContent = '삭제 중…';
+    if (deleteStatus) {
+      deleteStatus.textContent = '계정과 개인 데이터를 삭제하는 중…';
+      deleteStatus.classList.remove('error');
+    }
+
+    try {
+      await api.deleteAccount();
+      globalThis.localStorage?.removeItem('rtw_delete_account_pending_v1');
+      setAuthUser(null);
+      loginView();
+      alert('읽생기 계정과 개인 데이터가 삭제되었습니다.');
+    } catch (error) {
+      console.error('계정 삭제 실패', error);
+      deleteButton.disabled = false;
+      deleteButton.textContent = '내 계정과 데이터 삭제';
+      if (deleteStatus) {
+        deleteStatus.textContent = error.message || '계정을 삭제하지 못했습니다. 다시 시도해주세요.';
+        deleteStatus.classList.add('error');
+      }
+    }
+  });
+
+  if (deletionRequested) {
+    localStorage.removeItem('rtw_delete_account_pending_v1');
+    requestAnimationFrame(() => document.querySelector('#account-deletion')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
 }
 
 async function feedbackView() {
@@ -1236,6 +1286,10 @@ async function render() {
     if (!isCurrentRequest(userId, epoch)) return;
     dataReadyUserId = userId;
     if (!await refreshState()) return;
+  }
+
+  if (globalThis.localStorage?.getItem('rtw_delete_account_pending_v1') === '1') {
+    history.replaceState({}, '', href('/about/?delete-account=1'));
   }
 
   const path = pathFromLocation();

@@ -1,3 +1,16 @@
+const RTW_DELETE_ACCOUNT_PENDING = 'rtw_delete_account_pending_v1';
+
+function captureAccountDeletionRequest() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('delete-account') !== '1') return;
+  localStorage.setItem(RTW_DELETE_ACCOUNT_PENDING, '1');
+  params.delete('delete-account');
+  const query = params.toString();
+  history.replaceState({}, '', `${location.pathname}${query ? `?${query}` : ''}${location.hash || ''}`);
+}
+
+captureAccountDeletionRequest();
+
 function normalizeAndroidShareAtBoot() {
   const params = new URLSearchParams(location.search);
   const sharedUrl = String(params.get('share') || '').trim();
