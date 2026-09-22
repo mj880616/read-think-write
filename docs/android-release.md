@@ -362,3 +362,15 @@
 - 따라서 서버에는 루트만 요청하고, `/read/` 이동은 브라우저 내부 History API에서만 처리함.
 - 기존 reading-entry-flow의 share 처리는 비정상·구버전 진입에 대한 fallback으로 유지함.
 - 새 APK에서 브라우저 공유 → 읽생기 → 새 자료 → URL 자동 가져오기 재검증 필요.
+
+
+## Android 공유 최종 실기기 검증 완료
+
+- 2026-09-22 정식 package ID `com.bokdoong.read` APK에서 브라우저 공유 → 읽생기 → 새 자료 → URL 자동 입력/가져오기 정상 동작 확인.
+- 이전 `Not Found` 문제는 네이티브가 SPA 하위 경로를 직접 서버에 요청한 것이 원인이었으며, 루트 `/?share=` 진입 후 앱 부트 단계에서 History API로 내부 경로를 정규화하는 방식으로 해결함.
+- Android 공유 기능은 최종 완료 처리함.
+- 다음 단계는 Play Console 개발자 등록·앱 생성·스토어 정보/데이터 안전 작성·서명 AAB 업로드·비공개 테스트 준비임.
+
+## 현재 진행률
+
+약 65%. Android 앱 핵심 기능, Google OAuth, 세션 유지, 정식 package ID, Android 공유, 삭제 기능, 개인정보처리방침/지원 페이지, release AAB 빌드 및 업로드 키 준비까지 완료됨.
