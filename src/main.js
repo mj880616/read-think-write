@@ -609,26 +609,30 @@ async function resourceDetailView(id) {
     }
   }
 
-  document.querySelector('#save-selection-note')?.addEventListener('click', async () => {
-    if (!pending) return;
+  const selectionNoteButton = document.querySelector('#save-selection-note');
+  let savingSelectionNote = false;
+  selectionNoteButton?.addEventListener('click', async () => {
+    if (!pending || savingSelectionNote) return;
     const stillCurrent = currentViewGuard();
-    const memo = prompt('선택한 문장에 남길 메모를 입력하세요.');
-    if (memo === null) return;
-    const clean = memo.trim();
-    if (!clean) return;
+    const selection = pending;
+    savingSelectionNote = true;
+    selectionNoteButton.disabled = true;
     try {
       await api.createNote({
-        body: `> ${pending.text.replace(/\n/g, '\n> ')}\n\n${clean}`,
+        body: `> ${selection.text.replace(/\n/g, '\n> ')}`,
         note_type: DEFAULT_NOTE_TYPES[0],
         resource_id: id
       }, user.id);
       if (!stillCurrent()) return;
+      pending = null;
       pop.hidden = true;
       window.getSelection()?.removeAllRanges();
       if (!await refreshState() || !stillCurrent()) return;
       resourceDetailView(id);
     } catch (error) {
       if (!stillCurrent()) return;
+      savingSelectionNote = false;
+      selectionNoteButton.disabled = false;
       showNoteError(error);
     }
   });
