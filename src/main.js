@@ -1105,7 +1105,7 @@ function aboutView() {
 
     try {
       await api.deleteAccount();
-      localStorage.removeItem('rtw_delete_account_pending_v1');
+      globalThis.localStorage?.removeItem('rtw_delete_account_pending_v1');
       setAuthUser(null);
       loginView();
       alert('읽생기 계정과 개인 데이터가 삭제되었습니다.');
@@ -1288,7 +1288,7 @@ async function render() {
     if (!await refreshState()) return;
   }
 
-  if (localStorage.getItem('rtw_delete_account_pending_v1') === '1') {
+  if (globalThis.localStorage?.getItem('rtw_delete_account_pending_v1') === '1') {
     history.replaceState({}, '', href('/about/?delete-account=1'));
   }
 
