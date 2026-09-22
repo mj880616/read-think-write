@@ -345,10 +345,6 @@ function bindNoteActions() {
   }));
 }
 async function rerenderCurrentView() {
-  if (localStorage.getItem('rtw_delete_account_pending_v1') === '1') {
-    history.replaceState({}, '', href('/about/?delete-account=1'));
-  }
-
   const path = pathFromLocation();
   if (path === '/' || path === '') return homeView();
   if (path === '/notes/' || path === '/notes') return notesView();
@@ -1290,6 +1286,10 @@ async function render() {
     if (!isCurrentRequest(userId, epoch)) return;
     dataReadyUserId = userId;
     if (!await refreshState()) return;
+  }
+
+  if (localStorage.getItem('rtw_delete_account_pending_v1') === '1') {
+    history.replaceState({}, '', href('/about/?delete-account=1'));
   }
 
   const path = pathFromLocation();
