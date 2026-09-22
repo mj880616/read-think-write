@@ -13,6 +13,7 @@
 - 웹 본체: `https://read.bokdoong.com/`
 - 개인정보처리방침: `https://read.bokdoong.com/privacy.html`
 - 지원 페이지: `https://read.bokdoong.com/support.html`
+- 계정/데이터 삭제 URL: `https://read.bokdoong.com/account-deletion.html`
 
 ## 앱 서명
 
@@ -96,3 +97,11 @@ Google 계정 비밀번호를 Play에 제공하는 방식은 피하고, 검토 �
 12. 피드백 반영
 13. 프로덕션 액세스 신청
 14. 정식 출시
+
+
+### 계정 삭제
+
+- 앱 내 계정 삭제 경로 제공: 안내 → 계정과 삭제 → 내 계정과 데이터 삭제.
+- 외부 웹 삭제 URL: `https://read.bokdoong.com/account-deletion.html`.
+- 웹에서도 Google 로그인으로 본인 확인 후 삭제를 완료할 수 있으므로 앱 재설치가 필요 없음.
+- Data safety의 계정 삭제 질문에서 앱 내 삭제와 외부 웹 삭제 경로를 모두 제공한다고 응답.
