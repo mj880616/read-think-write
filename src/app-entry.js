@@ -1,3 +1,16 @@
+function normalizeAndroidShareAtBoot() {
+  const params = new URLSearchParams(location.search);
+  const sharedUrl = String(params.get('share') || '').trim();
+  if (!sharedUrl) return;
+
+  const target = new URL('/read/', location.origin);
+  target.searchParams.set('new', '1');
+  target.searchParams.set('url', sharedUrl);
+  history.replaceState({}, '', `${target.pathname}${target.search}`);
+}
+
+normalizeAndroidShareAtBoot();
+
 import { bootstrapNativeOAuth, bootstrapOAuth } from './auth-oauth.js';
 
 try {
