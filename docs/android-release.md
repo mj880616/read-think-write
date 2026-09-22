@@ -374,3 +374,14 @@
 ## 현재 진행률
 
 약 65%. Android 앱 핵심 기능, Google OAuth, 세션 유지, 정식 package ID, Android 공유, 삭제 기능, 개인정보처리방침/지원 페이지, release AAB 빌드 및 업로드 키 준비까지 완료됨.
+
+
+## Google Play 계정 삭제 정책 대응
+
+- Google Play은 앱에서 계정 생성이 가능하면 앱 내부 삭제 경로와 외부 웹 삭제 요청 경로를 모두 요구함.
+- 기존 `rtw-delete-account` Edge Function과 `api.deleteAccount()`은 이미 존재했으나 사용자 UI가 없었던 상태를 확인함.
+- 이용·개인정보 안내 화면에 계정 및 개인 데이터 삭제 버튼을 추가함.
+- 삭제 전 2단계 확인을 거치며 성공 시 개인 데이터 및 인증 계정을 삭제하고 로컬 로그인 상태를 정리함.
+- 외부 공개 삭제 URL `https://read.bokdoong.com/account-deletion.html` 추가.
+- 외부 삭제 페이지에서 웹 읽생기 `/?delete-account=1`로 진입하면 로그인 후 계정 삭제 영역으로 자동 이동함.
+- 개인정보처리방침과 지원 페이지에도 외부 삭제 URL을 연결함.
