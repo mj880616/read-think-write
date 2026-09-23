@@ -8,11 +8,14 @@ const handlerEnd = main.indexOf("const editCard =", handlerStart);
 assert.ok(handlerStart >= 0 && handlerEnd > handlerStart, 'selected-text memo handler must exist');
 const handler = main.slice(handlerStart, handlerEnd);
 
-assert.doesNotMatch(handler, /prompt\(/, 'selected-text memo save must not ask for a second memo input');
+assert.match(handler, /prompt\('선택한 문장에 코멘트를 남길까요\? \(선택 사항\)\\n비워두면 선택한 문장만 메모로 저장됩니다\.'\)/);
 assert.match(handler, /if \(!pending \|\| savingSelectionNote\) return;/);
 assert.match(handler, /const selection = pending;/);
+assert.match(handler, /if \(comment === null\) return;/);
+assert.match(handler, /const cleanComment = comment\.trim\(\);/);
+assert.match(handler, /const quoteBody = `> \$\{selection\.text\.replace\(\/\\n\/g, '\\n> '\)\}`;/);
 assert.match(handler, /selectionNoteButton\.disabled = true;/);
-assert.match(handler, /body: \`> \$\{selection\.text\.replace\(\/\\n\/g, '\\n> '\)\}\`/);
+assert.match(handler, /body: cleanComment \? `\$\{quoteBody\}\\n\\n\$\{cleanComment\}` : quoteBody/);
 assert.match(handler, /await refreshState\(\)/);
 assert.match(handler, /resourceDetailView\(id\)/);
 
