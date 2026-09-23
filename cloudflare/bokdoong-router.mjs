@@ -124,12 +124,12 @@ export default {
       cache: 'no-store'
     }));
 
+    if (host === READ_HOST && upstream.status === 404 && isReadSpaPath(incoming.pathname)) {
+      const recovery = new URL('/', incoming);
+      recovery.searchParams.set('redirect', readAppPath(incoming.pathname) + incoming.search);
+      return Response.redirect(recovery.href, 302);
+    }
     if (host === READ_HOST && upstream.status === 404 && isDocumentRequest(request)) {
-      if (isReadSpaPath(incoming.pathname)) {
-        const recovery = new URL('/', incoming);
-        recovery.searchParams.set('redirect', readAppPath(incoming.pathname) + incoming.search);
-        return Response.redirect(recovery.href, 302);
-      }
       return new Response(request.method === 'HEAD' ? null : 'Not found', {
         status: 404,
         headers: {

@@ -82,6 +82,41 @@ test('known 읽생기 SPA documents recover through the root app shell and prese
   );
 });
 
+test('known SPA paths recover for headerless GET and HEAD requests', async () => {
+  await withOrigin(
+    () => new Response('missing', { status: 404 }),
+    async (requests) => {
+      const headerless = await router.fetch(new Request('https://read.bokdoong.com/notes/'));
+      assert.equal(headerless.status, 302);
+      assert.equal(
+        new URL(headerless.headers.get('Location')).searchParams.get('redirect'),
+        '/notes/'
+      );
+
+      const head = await router.fetch(new Request('https://read.bokdoong.com/archive/2026/', {
+        method: 'HEAD',
+        headers: { Accept: '*/*' }
+      }));
+      assert.equal(head.status, 302);
+      assert.equal(await head.text(), '');
+      assert.equal(requests[1].method, 'HEAD');
+    }
+  );
+});
+
+test('legacy repository-prefixed SPA paths recover to the custom-domain route', async () => {
+  await withOrigin(
+    () => new Response('missing', { status: 404 }),
+    async () => {
+      const response = await router.fetch(documentRequest('/read-think-write/notes/?note=abc'));
+      const location = new URL(response.headers.get('Location'));
+      assert.equal(response.status, 302);
+      assert.equal(location.pathname, '/');
+      assert.equal(location.searchParams.get('redirect'), '/notes/?note=abc');
+    }
+  );
+});
+
 test('existing static files and fingerprinted assets pass through from the Pages repository', async () => {
   const paths = [
     '/manifest.webmanifest',
@@ -136,6 +171,20 @@ test('Pages redirects for 읽생기 stay on the custom-domain root path', async 
       const response = await router.fetch(new Request('https://read.bokdoong.com/support'));
       assert.equal(response.status, 301);
       assert.equal(response.headers.get('Location'), 'https://read.bokdoong.com/support.html');
+    }
+  );
+
+  await withOrigin(
+    () => new Response(null, {
+      status: 302,
+      headers: { Location: '/read-think-write/support.html?from=origin' }
+    }),
+    async () => {
+      const response = await router.fetch(new Request('https://read.bokdoong.com/support'));
+      assert.equal(
+        response.headers.get('Location'),
+        'https://read.bokdoong.com/support.html?from=origin'
+      );
     }
   );
 });
