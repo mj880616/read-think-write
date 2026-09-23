@@ -615,11 +615,16 @@ async function resourceDetailView(id) {
     if (!pending || savingSelectionNote) return;
     const stillCurrent = currentViewGuard();
     const selection = pending;
+    const comment = prompt('선택한 문장에 코멘트를 남길까요? (선택 사항)\n비워두면 선택한 문장만 메모로 저장됩니다.');
+    if (comment === null) return;
+    const cleanComment = comment.trim();
+    const quoteBody = `> ${selection.text.replace(/\n/g, '\n> ')}`;
+
     savingSelectionNote = true;
     selectionNoteButton.disabled = true;
     try {
       await api.createNote({
-        body: `> ${selection.text.replace(/\n/g, '\n> ')}`,
+        body: cleanComment ? `${quoteBody}\n\n${cleanComment}` : quoteBody,
         note_type: DEFAULT_NOTE_TYPES[0],
         resource_id: id
       }, user.id);
