@@ -57,6 +57,7 @@ function showReadListState() {
   const resourceForm = document.querySelector('#resource-form');
   const hero = document.querySelector('main.page > .hero');
   if (!resourceForm || !hero) return;
+  hero.closest('.shell')?.classList.add('read-list-shell');
   addNewReadingButton(hero);
   resourceForm.closest('.card')?.remove();
   hero.nextElementSibling?.classList.add('page-section');

@@ -123,3 +123,37 @@
 .beta-admin-grid{align-items:start}.beta-access-list{display:grid;gap:8px;margin-top:18px}.beta-access-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}.feedback-item{line-height:1.6}
 .ai-usage-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.ai-usage-item{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:2px}.ai-usage-item span{font-size:12px;color:var(--muted)}.ai-usage-item strong{font-size:18px}.ai-usage-item small{font-size:10px;color:var(--muted)}
 @media(max-width:760px){.userbar{gap:6px}.userbar-link{font-size:10px}.user-email{display:none}.ai-usage-summary{grid-template-columns:1fr}.beta-admin-grid{grid-template-columns:1fr}.policy-page{padding:18px}}
+
+@media (min-width: 1100px) {
+  .read-list-shell { max-width: 1200px; }
+  .read-list-shell .topbar { gap: 12px; }
+  .read-list-shell .brand { font-size: 18px; }
+  .read-list-shell .nav { flex-wrap: nowrap; gap: 2px; }
+  .read-list-shell .nav a { padding: 8px 7px; white-space: nowrap; }
+  .read-list-shell .userbar { gap: 6px; }
+  .read-list-shell .user-email { max-width: 120px; }
+  .read-list-shell .page { padding-top: 16px; }
+  .read-list-shell .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "eyebrow action" "title action" "description action";
+    column-gap: 20px;
+    padding: 10px 0 12px;
+  }
+  .read-list-shell .hero .eyebrow { grid-area: eyebrow; }
+  .read-list-shell .hero h1 { grid-area: title; font-size: 38px; margin: 3px 0 4px; }
+  .read-list-shell .hero p { grid-area: description; margin: 0; font-size: 16px; }
+  .read-list-shell .hero .inline-actions { grid-area: action; align-self: end; margin: 0 0 3px; }
+  .read-list-shell .grid { grid-template-columns: minmax(0, 1fr); }
+  .read-list-shell .grid.page-section { margin-top: 10px; }
+  .read-list-shell .grid .card h2 { margin-bottom: 10px; }
+  .read-list-shell .bookmark-resource-item { padding: 9px 48px 9px 0; }
+  .read-list-shell .bookmark-resource-copy > a {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    line-height: 1.45;
+  }
+  .read-list-shell .bookmark-star { top: 7px; }
+}
