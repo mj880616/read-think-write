@@ -862,11 +862,14 @@ async function notesView() {
         <h2>새 메모</h2>
         <form id="independent-note-form" class="form">
           <div class="field note-compose-body"><textarea name="body" required placeholder="지금 떠오른 생각을 그대로…" aria-label="새 메모 내용" aria-keyshortcuts="Control+Enter Meta+Enter"></textarea></div>
-          <div class="field note-compose-type"><label>유형 (선택)</label><select name="note_type" aria-label="유형 (선택)">${noteTypeOptions()}</select></div>
-          <button class="btn note-compose-save">저장</button><div id="ind-note-status" class="status"></div>
+          <div class="note-compose-type-row">
+            <div class="field note-compose-type"><label>유형 (선택)</label><select name="note_type" aria-label="유형 (선택)">${noteTypeOptions()}</select></div>
+            <button class="note-type-manage-toggle note-type-manage-inline" data-note-type-toggle type="button" aria-expanded="false" aria-controls="note-type-manager-panel">유형 관리</button>
+          </div>
+          <button class="btn note-compose-save" type="submit">저장</button><div id="ind-note-status" class="status"></div>
         </form>
         <div class="note-type-manager">
-          <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button" aria-expanded="false" aria-controls="note-type-manager-panel">유형 관리</button>
+          <button class="note-type-manage-toggle note-type-manage-bottom" id="note-type-manage-toggle" data-note-type-toggle type="button" aria-expanded="false" aria-controls="note-type-manager-panel">유형 관리</button>
           <div id="note-type-manager-panel" class="note-type-manager-panel" hidden>
             <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 유형" aria-label="새 유형 이름"><button class="btn secondary small" type="submit">추가</button></form>
             <div class="note-type-list">${state.noteTypes.map((item)=>`<div class="note-type-row"><span title="${esc(item.name)}">${esc(item.name)}</span><button type="button" data-note-type-edit="${item.id}" aria-label="${esc(item.name)} 이름 수정">수정</button><button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">삭제</button><form class="note-type-rename-form" data-note-type-rename="${item.id}" hidden><input name="name" value="${esc(item.name)}" maxlength="30" required aria-label="새 유형 이름"><button type="submit">저장</button><button type="button" data-note-type-cancel="${item.id}">취소</button></form></div>`).join('') || '<span class="muted">추가한 유형 없음</span>'}</div>
@@ -900,12 +903,15 @@ async function notesView() {
     selectedNoteTypeFilter = button.dataset.noteFilter;
     applyNoteTypeFilter();
   }));
-  document.querySelector('#note-type-manage-toggle')?.addEventListener('click', (event) => {
+  // One "유형 관리" button sits in the type row (PC) and one at the bottom (narrow screens); CSS shows only one,
+  // so the Tab order always follows what is on screen. Both drive the same panel.
+  const typeToggles = [...document.querySelectorAll('[data-note-type-toggle]')];
+  typeToggles.forEach((toggle) => toggle.addEventListener('click', () => {
     const panel = document.querySelector('#note-type-manager-panel');
     if (!panel) return;
     panel.hidden = !panel.hidden;
-    event.currentTarget.setAttribute('aria-expanded', String(!panel.hidden));
-  });
+    typeToggles.forEach((button) => button.setAttribute('aria-expanded', String(!panel.hidden)));
+  }));
   document.querySelector('#note-type-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const stillCurrent = currentViewGuard();
@@ -978,7 +984,7 @@ async function notesView() {
   }));
 
   const noteForm = document.querySelector('#independent-note-form');
-  const noteSaveButton = noteForm.querySelector?.('button');
+  const noteSaveButton = noteForm.querySelector?.('button[type="submit"]');
   const noteBody = noteForm.querySelector?.('textarea');
   let savingNewNote = false;
   noteBody?.addEventListener('input', () => autosizeNoteBody(noteBody));

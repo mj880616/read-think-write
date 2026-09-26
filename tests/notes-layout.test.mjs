@@ -26,7 +26,7 @@ function notesHarness({ notes, createNote } = {}) {
   const form = {
     values: { body: '새 메모', note_type: '' },
     addEventListener(type, fn) { callbacks.set(type, fn); },
-    querySelector(selector) { return selector === 'button' ? saveButton : selector === 'textarea' ? textarea : null; }
+    querySelector(selector) { return selector === 'button[type="submit"]' ? saveButton : selector === 'textarea' ? textarea : null; }
   };
   const status = { textContent: '', classList: { add() {} } };
   const noop = () => {};
@@ -68,18 +68,45 @@ test('PC memo screen: fixed composer column, wide list, 1280px max width', () =>
   assert.match(notesPcCss, /\.notes-layout\{grid-template-columns:312px minmax\(0,1fr\);[^}]*align-items:start/);
 });
 
-test('PC composer sticks under the 64px header and scrolls inside instead of being cut off', () => {
-  assert.match(notesPcCss, /\.notes-compose\{position:sticky;top:80px;max-height:calc\(100vh - 96px\);overflow-y:auto/);
-  assert.match(notesPcCss, /body:has\(\.notes-shell\)\{overflow-x:clip\}/, 'body must not be a scroll container or sticky never engages');
+test('PC composer sticks just under the header height and scrolls inside instead of being cut off', () => {
+  assert.match(notesPcCss, /\.notes-compose\{position:sticky;top:calc\(var\(--header-h\) \+ 16px\);max-height:calc\(100vh - var\(--header-h\) - 32px\);overflow-y:auto/);
+});
+
+test('header stickiness is one shared rule for every screen >=761px, never a per-screen override', () => {
+  const sharedCss = mediaBlock('@media(min-width:761px)');
+  const pcCss = mediaBlock('@media(min-width:1024px)');
+  assert.match(sharedCss, /@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/, 'body must not become a scroll container above 760px');
+  assert.match(sharedCss, /:root\{--header-h:94px\}/);
+  assert.match(pcCss, /:root\{--header-h:64px\}/);
+  assert.match(sharedCss, /html\{scroll-padding-top:calc\(var\(--header-h\) \+ 12px\)\}/, 'anchors and focus targets clear the fixed header');
+  assert.match(styles, /\.topbar\{position:sticky;top:0;z-index:10;/);
+  assert.match(styles.slice(0, 600), /body\{[^}]*overflow-x:hidden\}/, 'hidden stays as the mobile behaviour and the no-clip fallback');
+  assert.equal((styles.match(/overflow-x:clip/g) || []).length, 1, 'exactly one clip rule');
+  assert.doesNotMatch(styles, /:has\(\.notes-shell\)|\.notes-shell[^{]*\{[^}]*overflow-x/, 'no memo-only overflow workaround');
+  assert.match(styles, /@media\(max-width:760px\)\{[^\n]*\.topbar\{position:relative;top:auto;/, 'mobile header keeps scrolling with the page');
 });
 
 test('PC composer is compact: textarea, then type select + type manager on one row, then save', () => {
-  assert.match(notesPcCss, /\.notes-compose \.form,\.notes-compose \.note-type-manager\{display:contents\}/);
-  assert.match(notesPcCss, /\.note-compose-body\{grid-column:1\/-1;order:1\}/);
-  assert.match(notesPcCss, /\.note-compose-type\{grid-column:1;order:2\}/);
-  assert.match(notesPcCss, /\.note-type-manage-toggle\{grid-column:2;order:3;/);
-  assert.match(notesPcCss, /\.note-compose-save\{grid-column:1\/-1;order:4\}/);
+  assert.match(notesPcCss, /\.notes-compose \.note-compose-type-row\{display:flex;/);
+  assert.match(notesPcCss, /\.notes-compose \.note-type-manage-inline\{display:block;/);
+  assert.match(notesPcCss, /\.notes-compose \.note-type-manage-bottom\{display:none\}/);
+  assert.match(beforePc, /\.note-type-manage-inline\{display:none\}/, 'narrow screens keep the bottom toggle only');
   assert.match(notesPcCss, /textarea\{min-height:96px;max-height:min\(360px,45vh\);resize:none/, 'smaller start height with a growth cap');
+});
+
+test('composer Tab order follows DOM order: no CSS order, no positive tabindex, DOM matches the visual sequence', async () => {
+  assert.doesNotMatch(notesPcCss, /(^|[;{])order:/m);
+  assert.doesNotMatch(main, /tabindex="[1-9]/);
+  const h = notesHarness({ notes: [] });
+  await h.ui.notesView();
+  const html = h.root.innerHTML;
+  const at = (needle) => { const i = html.indexOf(needle); assert.notEqual(i, -1, needle); return i; };
+  const sequence = ['<textarea name="body"', '<select name="note_type"', 'note-type-manage-inline', 'note-compose-save', 'note-type-manage-bottom', 'id="note-type-manager-panel"'].map(at);
+  assert.deepEqual([...sequence].sort((a, b) => a - b), sequence, 'textarea → type → type manager (PC) → save → type manager (narrow) → panel');
+  const row = html.slice(at('note-compose-type-row'), at('note-compose-save'));
+  assert.match(row, /<select name="note_type"[\s\S]*data-note-type-toggle type="button"/, 'type select and its manager share one row');
+  assert.equal((html.match(/data-note-type-toggle/g) || []).length, 2);
+  assert.equal((html.match(/aria-controls="note-type-manager-panel"/g) || []).length, 2);
 });
 
 test('PC memo filter highlights only the selected chip with a filled accent', () => {
