@@ -153,11 +153,8 @@
 .userbar-search,.account-menu-toggle,.account-menu-item{display:none}
 .account-menu{display:contents}.account-menu-panel{display:contents}
 
-/* PC header: one row (brand / nav / search·guide·feedback·account) + shared page-top spacing */
-@media(min-width:1024px){
-.topbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;min-height:64px;padding:12px 20px}
-.nav{flex-wrap:nowrap;justify-content:center;gap:2px;min-width:0}
-.nav a{white-space:nowrap}
+/* PC and tablet header (>=761px): search·guide·feedback·account group with the account menu dropdown */
+@media(min-width:761px){
 .nav a[data-nav="/search/"]{display:none}
 .userbar{gap:2px;flex-wrap:nowrap;white-space:nowrap}
 .userbar .userbar-link,.account-menu-toggle{display:inline-flex;align-items:center;gap:5px;padding:8px 10px;border:0;border-radius:999px;background:transparent;font-size:14px;color:var(--muted);text-decoration:none;white-space:nowrap}
@@ -169,6 +166,23 @@
 .account-menu-panel .userbar-link,.account-menu-panel .account-menu-item,.account-menu-panel .logout-link{display:flex;width:100%;padding:8px 10px;border-radius:8px;font-size:14px;color:var(--ink);text-decoration:none;text-align:left}
 .account-menu-panel .userbar-link:hover,.account-menu-panel .account-menu-item:hover,.account-menu-panel .logout-link:hover{background:var(--accent-soft);color:var(--accent)}
 .account-menu-panel .account-menu-item{color:var(--danger)}
+}
+
+/* tablet/fold (761-1023px): two tidy rows — brand + account group, then a single non-wrapping nav row */
+@media(min-width:761px) and (max-width:1023px){
+.topbar{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"brand user" "nav nav";gap:4px 12px;padding:10px 20px 8px}
+.brand{grid-area:brand;min-width:0}
+.userbar{grid-area:user}
+.nav{grid-area:nav;flex-wrap:nowrap;gap:2px;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:0 -10px;padding:0 10px}
+.nav::-webkit-scrollbar{display:none}
+.nav a{white-space:nowrap}
+}
+
+/* PC header: one row (brand / nav / search·guide·feedback·account) + shared page-top spacing */
+@media(min-width:1024px){
+.topbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:16px;min-height:64px;padding:12px 20px}
+.nav{flex-wrap:nowrap;justify-content:center;gap:2px;min-width:0}
+.nav a{white-space:nowrap}
 .shell .page{padding-top:40px}
 .page .hero,.page .record-detail-head{padding-top:0;padding-bottom:24px}
 .page .hero>:first-child{margin-top:0}.page .hero>:last-child{margin-bottom:0}
