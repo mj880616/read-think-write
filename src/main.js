@@ -118,16 +118,50 @@ function shell(content, active = 'home') {
 ${PRIMARY_TABS.map(tab => routeLink(tab.label, tab.path, active === tab.key)).join('')}
       </nav>
       <div class="userbar">
+        <a class="userbar-link userbar-search${active === 'search' ? ' active' : ''}" href="${href('/search/')}" data-nav="/search/"><svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>검색</a>
         <a class="userbar-link" href="${href('/about/')}" data-nav="/about/">안내</a>
         <a class="userbar-link" href="${href('/feedback/')}" data-nav="/feedback/">피드백</a>
-        ${betaAccess?.role === 'admin' ? `<a class="userbar-link" href="${href('/beta/')}" data-nav="/beta/">베타 관리</a>` : ''}
-        <span class="user-email">${esc(user?.email || '')}</span>
-        <button class="logout-link" type="button" data-logout>로그아웃</button>
+        <div class="account-menu" data-account-menu>
+          <button class="account-menu-toggle" type="button" aria-label="계정 메뉴" aria-haspopup="true" aria-expanded="false" aria-controls="account-menu-panel" data-account-toggle>계정<svg aria-hidden="true" viewBox="0 0 10 6" width="10" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <div class="account-menu-panel" id="account-menu-panel" data-account-panel>
+            ${betaAccess?.role === 'admin' ? `<a class="userbar-link" href="${href('/beta/')}" data-nav="/beta/">베타 관리</a>` : ''}
+            <span class="user-email" title="${esc(user?.email || '')}">${esc(user?.email || '')}</span>
+            <a class="account-menu-item" href="${href('/about/?delete-account=1')}" data-nav="/about/?delete-account=1">계정 삭제</a>
+            <button class="logout-link" type="button" data-logout>로그아웃</button>
+          </div>
+        </div>
       </div>
     </header>
     <main class="page">${content}</main>
   </div>`;
 }
+
+function setAccountMenuOpen(open) {
+  const toggle = document.querySelector('[data-account-toggle]');
+  if (!toggle) return;
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  document.querySelector('[data-account-menu]')?.classList.toggle('open', open);
+}
+
+function accountMenuIsOpen() {
+  return document.querySelector('[data-account-toggle]')?.getAttribute?.('aria-expanded') === 'true';
+}
+
+document.addEventListener('click', (event) => {
+  if (!accountMenuIsOpen() || event.target?.closest?.('[data-account-menu]')) return;
+  setAccountMenuOpen(false);
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape' || !accountMenuIsOpen()) return;
+  setAccountMenuOpen(false);
+  document.querySelector('[data-account-toggle]')?.focus();
+});
+
+document.addEventListener('focusin', (event) => {
+  if (!accountMenuIsOpen() || event.target?.closest?.('[data-account-menu]')) return;
+  setAccountMenuOpen(false);
+});
 
 function bindCommon() {
   document.querySelectorAll('[data-nav]').forEach((anchor) => {
@@ -135,6 +169,12 @@ function bindCommon() {
       event.preventDefault();
       navigate(anchor.dataset.nav);
     });
+  });
+
+  document.querySelector('[data-account-toggle]')?.addEventListener('click', (event) => {
+    const open = event.currentTarget.getAttribute('aria-expanded') !== 'true';
+    setAccountMenuOpen(open);
+    if (open) document.querySelector('[data-account-panel] a, [data-account-panel] button')?.focus();
   });
 
   document.querySelector('[data-logout]')?.addEventListener('click', async (event) => {
