@@ -72,18 +72,41 @@ test('PC composer sticks just under the header height and scrolls inside instead
   assert.match(notesPcCss, /\.notes-compose\{position:sticky;top:calc\(var\(--header-h\) \+ 16px\);max-height:calc\(100vh - var\(--header-h\) - 32px\);overflow-y:auto/);
 });
 
-test('header stickiness is one shared rule for every screen >=761px, never a per-screen override', () => {
-  const sharedCss = mediaBlock('@media(min-width:761px)');
-  const pcCss = mediaBlock('@media(min-width:1024px)');
-  assert.match(sharedCss, /@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/, 'body must not become a scroll container above 760px');
-  assert.match(sharedCss, /:root\{--header-h:94px\}/);
-  assert.match(pcCss, /:root\{--header-h:64px\}/);
-  assert.match(sharedCss, /html\{scroll-padding-top:calc\(var\(--header-h\) \+ 12px\)\}/, 'anchors and focus targets clear the fixed header');
+test('header stickiness is one shared rule for every width, never a per-screen override', () => {
+  const shared = styles.slice(styles.indexOf('/* sticky header for every screen width'), styles.indexOf('/* PC and tablet header (>=761px)'));
+  assert.notEqual(shared, '', 'shared sticky-header block exists');
+  assert.match(shared, /^[^@]*@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/m, 'body must not become a scroll container at any width');
+  assert.match(shared, /html\{scroll-padding-top:calc\(var\(--header-h\) \+ 12px\)\}/, 'anchors and focus targets clear the pinned header');
+  assert.match(shared, /\.topbar\{top:var\(--header-top\)\}/);
+  assert.match(mediaBlock('@media(min-width:761px)'), /:root\{--header-h:94px;--header-top:0px\}/, 'tablet/PC header never scrolls away');
+  assert.match(mediaBlock('@media(min-width:1024px)'), /:root\{--header-h:64px\}/);
   assert.match(styles, /\.topbar\{position:sticky;top:0;z-index:10;/);
-  assert.match(styles.slice(0, 600), /body\{[^}]*overflow-x:hidden\}/, 'hidden stays as the mobile behaviour and the no-clip fallback');
+  assert.match(styles.slice(0, 600), /body\{[^}]*overflow-x:hidden\}/, 'hidden stays as the no-clip fallback');
   assert.equal((styles.match(/overflow-x:clip/g) || []).length, 1, 'exactly one clip rule');
   assert.doesNotMatch(styles, /:has\(\.notes-shell\)|\.notes-shell[^{]*\{[^}]*overflow-x/, 'no memo-only overflow workaround');
-  assert.match(styles, /@media\(max-width:760px\)\{[^\n]*\.topbar\{position:relative;top:auto;/, 'mobile header keeps scrolling with the page');
+  assert.doesNotMatch(styles, /\.topbar\{[^}]*position:(relative|fixed)/, 'no width switches the header off sticky');
+});
+
+test('phones (<=760px) pin only the menu row, with row 1 and the offset following text size', () => {
+  const shared = styles.slice(styles.indexOf('/* sticky header for every screen width'), styles.indexOf('/* PC and tablet header (>=761px)'));
+  const root = shared.match(/:root\{--header-row1:([\d.]+)em;--header-top:calc\(-(\d+)px - var\(--header-row1\)\);--header-h:calc\((\d+)px \+ max\((\d+)px, ([\d.]+)em \+ (\d+)px\)\)\}/);
+  assert.ok(root, 'row 1, offset and pinned height are em-based so browser/Android text scaling cannot make them overlap or clip');
+  const [, row1Em, offsetPx, pinnedExtraPx, navMinPx, navLineEm, navPadPx] = root.map(Number);
+  const phone = shared.match(/@media\(max-width:760px\)\{\.topbar\{grid-template-rows:var\(--header-row1\) auto\}\.brand\{min-width:0;overflow:hidden;text-overflow:ellipsis;line-height:([\d.]+)\}\}/);
+  assert.ok(phone, 'row 1 uses the shared variable; a long or enlarged brand ends in an ellipsis instead of running under the account links');
+  const brandLineHeight = Number(phone[1]);
+  const phoneTopbar = styles.match(/@media\(max-width:760px\)\{[^\n]*?\.topbar\{([^}]*)\}/)[1];
+  const [padTop, , padBottom] = phoneTopbar.match(/padding:(\d+)px (\d+)px (\d+)px/).slice(1).map(Number);
+  const rowGap = Number(phoneTopbar.match(/gap:(\d+)px/)[1]);
+  assert.equal(offsetPx, padTop + rowGap, '--header-top hides top padding + row gap + row 1, nothing more');
+  assert.equal(navMinPx, Number(styles.match(/@media\(max-width:760px\)\{[^\n]*?\.nav a\{min-height:(\d+)px;padding:(\d+)px/)[1]));
+  assert.equal(navPadPx, 2 * Number(styles.match(/@media\(max-width:760px\)\{[^\n]*?\.nav a\{min-height:\d+px;padding:(\d+)px/)[1]));
+  assert.equal(pinnedExtraPx, padBottom + 1, 'pinned height = menu row + bottom padding + 1px border');
+  // the brand line box fits inside row 1 at every phone brand size (text scaling multiplies both sides alike)
+  for (const brandPx of [18, 17]) assert.ok(brandPx * brandLineHeight <= row1Em * 16, `brand ${brandPx}px fits row 1`);
+  assert.ok(navLineEm >= 1.4, 'menu-row estimate covers a normal line height');
+  assert.doesNotMatch(styles, /grid-template-rows:\d+px|--header-top:-\d+px/, 'no fixed px row height or offset left behind');
+  assert.match(styles, /@media\(max-width:760px\)\{[^\n]*\.nav\{grid-area:nav;overflow-x:auto;/, 'the pinned menu row still scrolls sideways');
 });
 
 test('PC composer is compact: textarea, then type select + type manager on one row, then save', () => {
@@ -170,4 +193,13 @@ test('Korean composition then Ctrl+Enter saves once, and repeats during a save a
   assert.equal(h.writes.length, 1);
   assert.equal(h.saveButton.disabled, true);
   finish();
+});
+
+test('styles.css and its loader (index.html) carry the same cache version', () => {
+  const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const loader = indexHtml.match(/<link rel="stylesheet" href="\.\/src\/styles\.css\?v=([\w.-]+)" \/>/);
+  assert.ok(loader, 'index.html loads styles.css with a ?v= cache version');
+  const declared = styles.match(/^\/\* cache version ([\w.-]+):/);
+  assert.ok(declared, 'styles.css declares its cache version on the first line');
+  assert.equal(loader[1], declared[1], 'bump both together so browsers never mix a new loader with a stale stylesheet');
 });
