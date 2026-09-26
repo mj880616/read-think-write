@@ -53,8 +53,11 @@ export async function deleteAccount() {
   const { data, error } = await supabase.functions.invoke('rtw-delete-account', { body: {} });
   await failFunction(error);
   if (data?.error) throw new Error(data.error);
+  if (data?.ok !== true) throw new Error('삭제 결과를 확인하지 못했습니다. 다시 누르면 남은 항목을 이어서 삭제합니다.');
   clearRememberedLogin();
   await supabase.auth.signOut().catch(() => {});
+  // mode: 'full_account' (auth 계정까지 삭제) | 'rtw_data_only' (공유 로그인 계정 유지)
+  return { mode: data.mode, deleted: data.deleted };
 }
 
 export async function signOut() {

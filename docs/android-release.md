@@ -401,3 +401,12 @@
 ## 현재 진행률
 
 약 70%. 앱 기능·Android 패키징·공유·정식 package ID·개인정보처리방침·지원 페이지·계정 삭제 정책 대응·release AAB 및 업로드 키 준비까지 완료됨. 이후 주요 작업은 Play Console 계정/앱 생성, 스토어·정책 양식 입력, 심사용 접근정보 준비, 서명 AAB 업로드, 비공개 테스트 운영임.
+
+## [RTW-1] 계정 삭제 Web2 안전화 (코드만, 배포 전)
+
+- `auth.users`를 Web2와 공유하므로 `rtw-delete-account`는 삭제 전에 service role로 Web2 흔적(`app_profiles.user_id`, `app_workspace_members.user_id`, `app_pages.owner_id`, `app_spaces.owner_id`)을 조회함. Web2 테이블은 읽기만 함.
+- Web2 계정: `rtw_*` 본인 행과 `rtw_beta_access`만 삭제하고 auth 계정은 유지 → 응답 `mode: 'rtw_data_only'`.
+- 일반 사용자: `rtw_*` 본인 행 → `rtw_beta_access` → auth 계정 순으로 삭제 → 응답 `mode: 'full_account'`. auth 삭제 직전에 Web2 흔적을 한 번 더 확인함.
+- Web2 조회가 실패하면 아무것도 지우지 않음(fail closed). 각 단계는 반복 실행해도 안전하며, 실패 응답에 `code`·`stage`와 "다시 누르면 남은 항목을 이어서 삭제" 안내를 포함함.
+- 베타 권한 삭제 후 auth 삭제가 실패한 경우에도 재시도할 수 있도록 초대 필요 화면에도 삭제 버튼을 둠.
+- `rtw_personal_mode`(외부 GPT 쓰기 owner 설정)는 사용자 데이터가 아니므로 건드리지 않음.
