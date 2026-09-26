@@ -1,4 +1,4 @@
-/* cache version 20260926-phone-nav: bump together with ?v= on the styles.css <link> in index.html */
+/* cache version 20260926-phone-nav-2: bump together with ?v= on the styles.css <link> in index.html */
 :root{font-family:Pretendard,"Noto Sans KR",system-ui,sans-serif;color:#22201c;background:#f4f1e8;font-synthesis:none;--paper:#fffdf7;--ink:#22201c;--muted:#777166;--line:#ddd6c8;--accent:#2d5548;--accent-soft:#e2ebe5;--danger:#8a3f35;--space-1:8px;--space-2:12px;--space-3:16px;--space-section:20px;--space-large:24px;--space-xl:32px}
 *{box-sizing:border-box}html{overflow-x:hidden}body{margin:0;min-width:320px;overflow-x:hidden}button,input,textarea,select{font:inherit;max-width:100%}button{cursor:pointer}a{color:inherit}p,li,a,h1,h2,h3,.meta,.muted{overflow-wrap:anywhere}.shell{max-width:1080px;margin:auto;padding:0 20px 80px}.topbar{position:sticky;top:0;z-index:10;background:rgba(244,241,232,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin:0 -20px;padding:14px 20px;display:flex;gap:20px;align-items:center;justify-content:space-between}.brand{font-family:Georgia,"Noto Serif KR",serif;font-weight:700;font-size:20px;text-decoration:none;white-space:nowrap}.nav{display:flex;gap:var(--space-1);flex-wrap:wrap}.nav a{padding:8px 10px;border-radius:999px;text-decoration:none;color:var(--muted);display:inline-flex;align-items:center}.nav a.active,.nav a:hover{background:var(--accent-soft);color:var(--accent)}.userbar{display:flex;gap:var(--space-1);align-items:center;font-size:13px;color:var(--muted)}.user-email{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.logout-link{border:0;background:transparent;padding:2px 0;font:inherit;font-size:11px;color:var(--muted);text-decoration:underline;text-underline-offset:2px;cursor:pointer}.logout-link:hover{color:var(--accent)}.logout-link:disabled{opacity:.55;cursor:default}.account-delete-link{border:0;background:transparent;padding:2px 0;font:inherit;font-size:10px;color:var(--muted);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .page{padding-top:36px}
@@ -159,12 +159,14 @@
    container that never scrolls, which silently disables position:sticky; clip guards against horizontal overflow
    without creating that container. Browsers without overflow:clip keep hidden (no overflow, header scrolls away).
    --header-h is the part of the header that stays on screen; --header-top pulls the phone header's first row
-   (brand + guide/feedback/account) out of view so only the menu row stays pinned. */
+   (brand + guide/feedback/account) out of view so only the menu row stays pinned. Phone values use em so they
+   follow browser/Android text scaling: row 1 is 1.5em of the topbar font (24px at 16px) and the offset is the
+   12px top padding + 8px row gap + that row; the pinned height is the 40px-or-taller menu row + 10px padding + 1px border. */
 @supports(overflow:clip){body{overflow-x:clip}}
-:root{--header-h:51px;--header-top:-44px}
+:root{--header-row1:1.5em;--header-top:calc(-20px - var(--header-row1));--header-h:calc(11px + max(40px, 1.5em + 16px))}
 .topbar{top:var(--header-top)}
 html{scroll-padding-top:calc(var(--header-h) + 12px)}
-@media(max-width:760px){.topbar{grid-template-rows:24px auto}.brand{line-height:24px}}
+@media(max-width:760px){.topbar{grid-template-rows:var(--header-row1) auto}.brand{min-width:0;overflow:hidden;text-overflow:ellipsis;line-height:1.25}}
 
 /* PC and tablet header (>=761px): search·guide·feedback·account group with the account menu dropdown */
 @media(min-width:761px){

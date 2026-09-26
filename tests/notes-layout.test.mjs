@@ -78,7 +78,7 @@ test('header stickiness is one shared rule for every width, never a per-screen o
   assert.match(shared, /^[^@]*@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/m, 'body must not become a scroll container at any width');
   assert.match(shared, /html\{scroll-padding-top:calc\(var\(--header-h\) \+ 12px\)\}/, 'anchors and focus targets clear the pinned header');
   assert.match(shared, /\.topbar\{top:var\(--header-top\)\}/);
-  assert.match(mediaBlock('@media(min-width:761px)'), /:root\{--header-h:94px;--header-top:0px\}/);
+  assert.match(mediaBlock('@media(min-width:761px)'), /:root\{--header-h:94px;--header-top:0px\}/, 'tablet/PC header never scrolls away');
   assert.match(mediaBlock('@media(min-width:1024px)'), /:root\{--header-h:64px\}/);
   assert.match(styles, /\.topbar\{position:sticky;top:0;z-index:10;/);
   assert.match(styles.slice(0, 600), /body\{[^}]*overflow-x:hidden\}/, 'hidden stays as the no-clip fallback');
@@ -87,20 +87,25 @@ test('header stickiness is one shared rule for every width, never a per-screen o
   assert.doesNotMatch(styles, /\.topbar\{[^}]*position:(relative|fixed)/, 'no width switches the header off sticky');
 });
 
-test('phones (<=760px) pin only the menu row: the first header row is exactly pulled out of view', () => {
+test('phones (<=760px) pin only the menu row, with row 1 and the offset following text size', () => {
   const shared = styles.slice(styles.indexOf('/* sticky header for every screen width'), styles.indexOf('/* PC and tablet header (>=761px)'));
-  const root = shared.match(/:root\{--header-h:(\d+)px;--header-top:-(\d+)px\}/);
-  assert.ok(root, 'phone defaults for --header-h and --header-top');
-  const [, pinned, collapse] = root.map(Number);
-  const phoneRow = shared.match(/@media\(max-width:760px\)\{\.topbar\{grid-template-rows:(\d+)px auto\}\.brand\{line-height:(\d+)px\}\}/);
-  assert.ok(phoneRow, 'first row height is fixed so the offset does not depend on the font');
+  const root = shared.match(/:root\{--header-row1:([\d.]+)em;--header-top:calc\(-(\d+)px - var\(--header-row1\)\);--header-h:calc\((\d+)px \+ max\((\d+)px, ([\d.]+)em \+ (\d+)px\)\)\}/);
+  assert.ok(root, 'row 1, offset and pinned height are em-based so browser/Android text scaling cannot make them overlap or clip');
+  const [, row1Em, offsetPx, pinnedExtraPx, navMinPx, navLineEm, navPadPx] = root.map(Number);
+  const phone = shared.match(/@media\(max-width:760px\)\{\.topbar\{grid-template-rows:var\(--header-row1\) auto\}\.brand\{min-width:0;overflow:hidden;text-overflow:ellipsis;line-height:([\d.]+)\}\}/);
+  assert.ok(phone, 'row 1 uses the shared variable; a long or enlarged brand ends in an ellipsis instead of running under the account links');
+  const brandLineHeight = Number(phone[1]);
   const phoneTopbar = styles.match(/@media\(max-width:760px\)\{[^\n]*?\.topbar\{([^}]*)\}/)[1];
   const [padTop, , padBottom] = phoneTopbar.match(/padding:(\d+)px (\d+)px (\d+)px/).slice(1).map(Number);
   const rowGap = Number(phoneTopbar.match(/gap:(\d+)px/)[1]);
-  const navHeight = Number(styles.match(/@media\(max-width:760px\)\{[^\n]*?\.nav a\{min-height:(\d+)px/)[1]);
-  assert.equal(Number(phoneRow[1]), Number(phoneRow[2]));
-  assert.equal(collapse, padTop + Number(phoneRow[1]) + rowGap, '--header-top hides padding + row 1 + gap, nothing more');
-  assert.equal(pinned, navHeight + padBottom + 1, '--header-h is the pinned menu row incl. bottom padding and border');
+  assert.equal(offsetPx, padTop + rowGap, '--header-top hides top padding + row gap + row 1, nothing more');
+  assert.equal(navMinPx, Number(styles.match(/@media\(max-width:760px\)\{[^\n]*?\.nav a\{min-height:(\d+)px;padding:(\d+)px/)[1]));
+  assert.equal(navPadPx, 2 * Number(styles.match(/@media\(max-width:760px\)\{[^\n]*?\.nav a\{min-height:\d+px;padding:(\d+)px/)[1]));
+  assert.equal(pinnedExtraPx, padBottom + 1, 'pinned height = menu row + bottom padding + 1px border');
+  // the brand line box fits inside row 1 at every phone brand size (text scaling multiplies both sides alike)
+  for (const brandPx of [18, 17]) assert.ok(brandPx * brandLineHeight <= row1Em * 16, `brand ${brandPx}px fits row 1`);
+  assert.ok(navLineEm >= 1.4, 'menu-row estimate covers a normal line height');
+  assert.doesNotMatch(styles, /grid-template-rows:\d+px|--header-top:-\d+px/, 'no fixed px row height or offset left behind');
   assert.match(styles, /@media\(max-width:760px\)\{[^\n]*\.nav\{grid-area:nav;overflow-x:auto;/, 'the pinned menu row still scrolls sideways');
 });
 
