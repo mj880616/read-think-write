@@ -174,3 +174,4 @@
 .page .hero>:first-child{margin-top:0}.page .hero>:last-child{margin-bottom:0}
 .page .hero+*{margin-top:0}
 }
+@media(min-width:1024px) and (max-width:1199px){.topbar{gap:12px}.nav a{padding-left:8px;padding-right:8px}}
