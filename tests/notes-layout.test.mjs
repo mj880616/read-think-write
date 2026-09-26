@@ -72,18 +72,36 @@ test('PC composer sticks just under the header height and scrolls inside instead
   assert.match(notesPcCss, /\.notes-compose\{position:sticky;top:calc\(var\(--header-h\) \+ 16px\);max-height:calc\(100vh - var\(--header-h\) - 32px\);overflow-y:auto/);
 });
 
-test('header stickiness is one shared rule for every screen >=761px, never a per-screen override', () => {
-  const sharedCss = mediaBlock('@media(min-width:761px)');
-  const pcCss = mediaBlock('@media(min-width:1024px)');
-  assert.match(sharedCss, /@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/, 'body must not become a scroll container above 760px');
-  assert.match(sharedCss, /:root\{--header-h:94px\}/);
-  assert.match(pcCss, /:root\{--header-h:64px\}/);
-  assert.match(sharedCss, /html\{scroll-padding-top:calc\(var\(--header-h\) \+ 12px\)\}/, 'anchors and focus targets clear the fixed header');
+test('header stickiness is one shared rule for every width, never a per-screen override', () => {
+  const shared = styles.slice(styles.indexOf('/* sticky header for every screen width'), styles.indexOf('/* PC and tablet header (>=761px)'));
+  assert.notEqual(shared, '', 'shared sticky-header block exists');
+  assert.match(shared, /^[^@]*@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/m, 'body must not become a scroll container at any width');
+  assert.match(shared, /html\{scroll-padding-top:calc\(var\(--header-h\) \+ 12px\)\}/, 'anchors and focus targets clear the pinned header');
+  assert.match(shared, /\.topbar\{top:var\(--header-top\)\}/);
+  assert.match(mediaBlock('@media(min-width:761px)'), /:root\{--header-h:94px;--header-top:0px\}/);
+  assert.match(mediaBlock('@media(min-width:1024px)'), /:root\{--header-h:64px\}/);
   assert.match(styles, /\.topbar\{position:sticky;top:0;z-index:10;/);
-  assert.match(styles.slice(0, 600), /body\{[^}]*overflow-x:hidden\}/, 'hidden stays as the mobile behaviour and the no-clip fallback');
+  assert.match(styles.slice(0, 600), /body\{[^}]*overflow-x:hidden\}/, 'hidden stays as the no-clip fallback');
   assert.equal((styles.match(/overflow-x:clip/g) || []).length, 1, 'exactly one clip rule');
   assert.doesNotMatch(styles, /:has\(\.notes-shell\)|\.notes-shell[^{]*\{[^}]*overflow-x/, 'no memo-only overflow workaround');
-  assert.match(styles, /@media\(max-width:760px\)\{[^\n]*\.topbar\{position:relative;top:auto;/, 'mobile header keeps scrolling with the page');
+  assert.doesNotMatch(styles, /\.topbar\{[^}]*position:(relative|fixed)/, 'no width switches the header off sticky');
+});
+
+test('phones (<=760px) pin only the menu row: the first header row is exactly pulled out of view', () => {
+  const shared = styles.slice(styles.indexOf('/* sticky header for every screen width'), styles.indexOf('/* PC and tablet header (>=761px)'));
+  const root = shared.match(/:root\{--header-h:(\d+)px;--header-top:-(\d+)px\}/);
+  assert.ok(root, 'phone defaults for --header-h and --header-top');
+  const [, pinned, collapse] = root.map(Number);
+  const phoneRow = shared.match(/@media\(max-width:760px\)\{\.topbar\{grid-template-rows:(\d+)px auto\}\.brand\{line-height:(\d+)px\}\}/);
+  assert.ok(phoneRow, 'first row height is fixed so the offset does not depend on the font');
+  const phoneTopbar = styles.match(/@media\(max-width:760px\)\{[^\n]*?\.topbar\{([^}]*)\}/)[1];
+  const [padTop, , padBottom] = phoneTopbar.match(/padding:(\d+)px (\d+)px (\d+)px/).slice(1).map(Number);
+  const rowGap = Number(phoneTopbar.match(/gap:(\d+)px/)[1]);
+  const navHeight = Number(styles.match(/@media\(max-width:760px\)\{[^\n]*?\.nav a\{min-height:(\d+)px/)[1]);
+  assert.equal(Number(phoneRow[1]), Number(phoneRow[2]));
+  assert.equal(collapse, padTop + Number(phoneRow[1]) + rowGap, '--header-top hides padding + row 1 + gap, nothing more');
+  assert.equal(pinned, navHeight + padBottom + 1, '--header-h is the pinned menu row incl. bottom padding and border');
+  assert.match(styles, /@media\(max-width:760px\)\{[^\n]*\.nav\{grid-area:nav;overflow-x:auto;/, 'the pinned menu row still scrolls sideways');
 });
 
 test('PC composer is compact: textarea, then type select + type manager on one row, then save', () => {

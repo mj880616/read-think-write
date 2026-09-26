@@ -56,7 +56,7 @@ assert.match(stylesSource,/--space-3:\s*16px/,'16px spacing token');
 assert.match(stylesSource,/--space-section:\s*20px/,'20px section/card gap token');
 assert.match(stylesSource,/--space-large:\s*24px/,'24px large spacing token');
 assert.match(stylesSource,/\.home-stack\{[^}]*gap:var\(--space-section\)/,'home cards use one shared stack gap');
-assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.topbar\{[^}]*position:relative/,'mobile header must not cover page content');
+assert.match(stylesSource,/:root\{--header-h:51px;--header-top:-44px\}\s*\.topbar\{top:var\(--header-top\)\}\s*html\{scroll-padding-top:calc\(var\(--header-h\) \+ 12px\)\}/,'mobile header covers content with the menu row only, and scroll targets clear it');
 assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.userbar span\{[^}]*display:none/,'mobile hides redundant email');
 assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.nav a\{[^}]*min-height:40px/,'mobile nav has adequate touch targets');
 assert.match(stylesSource,/@media\(max-width:760px\)[\s\S]*\.page\{[^}]*padding-top:var\(--space-large\)/,'mobile page starts clear of header');
