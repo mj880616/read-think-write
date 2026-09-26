@@ -30,11 +30,12 @@
 
 
 
-.note-item-head{display:flex;align-items:flex-start;gap:6px}.note-item-head>[data-note-display]{flex:1;min-width:0}.note-menu-button{flex:0 0 auto;border:0;background:transparent;padding:0 2px;color:var(--muted);font:inherit;font-size:14px;line-height:1;cursor:pointer}.note-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px}.note-actions button{border:0;background:transparent;padding:1px 0;font:inherit;font-size:10px;color:var(--muted);cursor:pointer}.note-inline-edit{margin-top:6px}.note-inline-edit textarea{min-height:84px;width:100%}
+.note-item-head{display:flex;align-items:flex-start;gap:6px}.note-item-head>[data-note-display]{flex:1;min-width:0}.note-menu{position:relative;flex:0 0 auto}.note-menu-button{display:grid;place-items:center;min-width:28px;min-height:28px;margin:-7px -7px -7px 0;border:0;border-radius:6px;background:transparent;padding:0 2px;color:var(--muted);font:inherit;font-size:14px;line-height:1;cursor:pointer}.note-menu-button:hover,.note-menu-button[aria-expanded="true"]{background:var(--accent-soft);color:var(--accent)}.note-menu-panel{position:absolute;right:-7px;top:calc(100% + 10px);z-index:5;display:flex;flex-direction:column;min-width:112px;padding:4px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(30,25,18,.12)}.note-menu-panel[hidden]{display:none}.note-menu-panel button{min-height:36px;border:0;border-radius:7px;background:transparent;padding:6px 10px;color:var(--ink);font:inherit;font-size:13px;text-align:left;cursor:pointer}.note-menu-panel button:hover,.note-menu-panel button:focus-visible{background:var(--accent-soft);color:var(--accent);outline:none}.note-menu-panel [data-note-delete]{color:var(--danger)}
+.note-record-row{position:relative}.note-record-row>.note-menu{position:absolute;top:18px;right:0}.note-record-row>.note-record>summary{padding-right:28px}
+.note-row-toggle,.note-row-type,.note-row-title,.note-row-preview,.note-row-date,.note-row-chevron,.note-row-full{display:none}.note-inline-edit{margin-top:6px}.note-inline-edit textarea{min-height:84px;width:100%}
 
 .note-item-link{flex:1;min-width:0;color:inherit;text-decoration:none}.note-item-link:hover{text-decoration:underline;text-underline-offset:2px}
 
-.note-record-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px}.note-record-actions button{border:0;background:transparent;padding:1px 0;font:inherit;font-size:10px;color:var(--muted);cursor:pointer}
 
 
 .note-item-link{display:block;font-size:14px;font-weight:400;line-height:1.55;color:var(--ink);text-decoration:none}.note-item-link:hover{text-decoration:none}.note-quote-preview,.note-quote-full{display:block;color:var(--muted);font-size:13px;font-weight:400;line-height:1.5;border-left:2px solid var(--line);padding-left:9px}.note-quote-preview{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.note-memo-preview,.note-memo-full{display:block;color:var(--ink);font-size:14px;font-weight:400;line-height:1.55}.note-quote-preview+.note-memo-preview,.note-quote-full+.note-memo-full{margin-top:7px}.note-item-link-expanded{white-space:normal;cursor:default}.note-item .meta{font-size:10px;color:var(--muted);margin-top:5px}
@@ -189,3 +190,52 @@
 .page .hero+*{margin-top:0}
 }
 @media(min-width:1024px) and (max-width:1199px){.topbar{gap:12px}.nav a{padding-left:8px;padding-right:8px}}
+
+/* PC memo screen (>=1024px): fixed-width sticky composer + wide, dense memo list */
+@media(min-width:1024px){
+.notes-shell{max-width:1280px}
+/* body{overflow-x:hidden} turns body into a scroll container that never scrolls, which disables every
+   position:sticky on the page; clip keeps the no-horizontal-scroll guard without that side effect */
+@supports(overflow:clip){body:has(.notes-shell){overflow-x:clip}}
+.notes-layout{grid-template-columns:312px minmax(0,1fr);gap:24px;align-items:start}
+.notes-compose{position:sticky;top:80px;max-height:calc(100vh - 96px);overflow-y:auto;overscroll-behavior:contain;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 8px;align-content:start;padding:20px}
+.notes-compose>h2{grid-column:1/-1;margin:0 0 2px}
+.notes-compose .form,.notes-compose .note-type-manager{display:contents}
+.notes-compose .note-compose-body{grid-column:1/-1;order:1}
+.notes-compose .note-compose-body textarea{min-height:96px;max-height:min(360px,45vh);resize:none;overflow-y:auto;line-height:1.55}
+.notes-compose .note-compose-type{grid-column:1;order:2}
+.notes-compose .note-compose-type label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.notes-compose .note-compose-type select{height:40px;padding:0 10px}
+.notes-compose .note-type-manage-toggle{grid-column:2;order:3;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:13px;color:var(--muted);white-space:nowrap}
+.notes-compose .note-type-manage-toggle:hover,.notes-compose .note-type-manage-toggle[aria-expanded="true"]{border-color:var(--accent);color:var(--accent)}
+.notes-compose .note-compose-save{grid-column:1/-1;order:4}
+.notes-compose .status{grid-column:1/-1;order:5;min-height:0}
+.notes-compose .status:empty{display:none}
+.notes-compose .note-type-manager-panel{grid-column:1/-1;order:6;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#f8f6ef}
+.notes-compose .note-type-form{margin-top:0}
+.notes-list .note-type-filters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.notes-list .note-row{margin:0 -8px;padding:8px;border-bottom:1px solid var(--line)}
+.notes-list .note-row:hover{background:rgba(45,85,72,.035)}
+.notes-list .note-row-toggle,.notes-list .note-row-chevron{display:inline-grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border:0;border-radius:6px;background:transparent;padding:0;color:var(--muted);font-size:11px;line-height:1}
+.notes-list .note-row-toggle:hover{background:var(--accent-soft);color:var(--accent)}
+.notes-list .note-row-toggle>span,.notes-list .note-row-chevron{transition:transform .12s}
+.notes-list .note-row-toggle[aria-expanded="true"]>span,.notes-list .note-record[open] .note-row-chevron{transform:rotate(90deg)}
+.notes-list .note-row-type{display:inline-flex}.notes-list .note-row-type:empty{display:none}
+.notes-list .note-row-title{display:block;flex:1 1 0;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:15px;font-weight:650;line-height:1.45;color:var(--ink)}
+.notes-list .note-row-preview{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;flex:0 0 100%;padding-left:28px;font-size:13px;font-weight:400;line-height:1.5;color:var(--muted)}
+.notes-list .note-row-date,.notes-list .note-row .meta{display:block;flex:0 0 100%;margin-top:0;padding-left:28px;font-size:11px;line-height:1.5;font-weight:400;color:var(--muted)}
+.notes-list .note-row .note-item-head{flex-wrap:wrap;align-items:center;gap:3px 6px}
+.notes-list .note-row .note-item-link{flex:1 1 0;min-width:0}
+.notes-list .note-row .note-item-link:hover .note-row-title{text-decoration:underline;text-underline-offset:2px}
+.notes-list .note-row .note-quote-preview,.notes-list .note-row .note-memo-preview,.notes-list .note-row .note-meta-type,.notes-list .note-record-summary{display:none}
+.notes-list .note-row-full:not([hidden]){display:block;padding:6px 0 2px 28px}
+.notes-list .note-row-expanded .note-row-preview,.notes-list .note-row-editing .note-row-preview,.notes-list .note-row-editing .note-row-full{display:none}
+.notes-list .note-row .note-inline-edit{padding-left:28px}
+.notes-list .note-record-row>.note-record{padding:0;border-bottom:0}
+.notes-list .note-record-row>.note-menu{top:11px;right:8px}
+.notes-list .note-record>summary{display:flex;flex-wrap:wrap;align-items:center;gap:3px 6px;list-style:none;font-weight:400}
+.notes-list .note-record>summary::-webkit-details-marker{display:none}
+.notes-list .note-record[open]>summary .note-row-preview,.notes-list .note-record[open]>summary .note-row-date{display:none}
+.notes-list .note-record>:not(summary){margin-left:28px}
+.notes-list .note-record .note-body{margin:8px 0 4px 28px;font-size:14px}.notes-list .note-record .meta{padding-left:0}
+}

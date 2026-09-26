@@ -305,22 +305,100 @@ function noteParts(note) {
   };
 }
 
-function noteItem(note) {
+function noteRowText(note) {
   const parts = noteParts(note);
+  const memoLines = parts.memo.split('\n').map((line) => line.trim()).filter(Boolean);
+  const quoteLines = parts.quote.split('\n').map((line) => line.trim()).filter(Boolean);
+  const lines = memoLines.length ? memoLines : quoteLines;
+  const rest = lines.slice(1).join(' ');
+  const preview = rest || (memoLines.length && quoteLines.length ? quoteLines.join(' ') : '');
+  return { title: lines[0] || '내용 없음', preview: preview.slice(0, 400) };
+}
+
+function noteMenu(noteId, editAttr = 'data-note-edit') {
+  return `<div class="note-menu" data-note-menu-wrap><button class="note-menu-button" data-note-menu="${noteId}" type="button" aria-label="메모 메뉴" aria-haspopup="menu" aria-expanded="false" aria-controls="note-menu-${noteId}">⋯</button><div class="note-menu-panel" id="note-menu-${noteId}" role="menu" aria-label="메모 메뉴" data-note-menu-panel hidden><button type="button" role="menuitem" tabindex="-1" ${editAttr}="${noteId}">수정</button><button type="button" role="menuitem" tabindex="-1" data-note-delete="${noteId}">삭제</button></div></div>`;
+}
+
+function noteFullHtml(note) {
+  const parts = noteParts(note);
+  return parts.quoted
+    ? `<span class="note-quote-full">${esc(parts.quote).replace(/\n/g, '<br>')}</span>${parts.memo ? `<span class="note-memo-full">${esc(parts.memo).replace(/\n/g, '<br>')}</span>` : ''}`
+    : `<span class="note-memo-full">${esc(parts.memo).replace(/\n/g, '<br>')}</span>`;
+}
+
+function noteItem(note, options = {}) {
+  const listRow = options?.listRow === true;
+  const parts = noteParts(note);
+  const row = listRow ? noteRowText(note) : null;
   const hrefTarget = note.resource_id ? href('/read/' + note.resource_id + '/?note=' + encodeURIComponent(note.id)) : href('/notes/?note=' + encodeURIComponent(note.id));
   const quotePreview = esc(parts.quote).replace(/\n/g, ' ');
   const memoPreview = esc(parts.memo).replace(/\n/g, ' ');
-  return `<div class="item note-item ${parts.quoted ? 'note-item-quoted' : ''}" data-note-item="${note.id}" data-note-list-item data-note-type="${esc(note.note_type || '')}">
+  return `<div class="item note-item ${parts.quoted ? 'note-item-quoted' : ''} ${listRow ? 'note-row' : ''}" data-note-item="${note.id}" data-note-list-item data-note-type="${esc(note.note_type || '')}">
     <div class="note-item-head">
+      ${listRow ? `<button class="note-row-toggle" data-note-expand="${note.id}" type="button" aria-expanded="false" aria-controls="note-full-${note.id}" aria-label="메모 전체 보기: ${esc(row.title.slice(0, 40))}"><span aria-hidden="true">▸</span></button><span class="note-row-type">${noteTypeBadge(note.note_type)}</span>` : ''}
       <a class="note-item-link" data-note-display href="${hrefTarget}" data-note-target="${note.id}" data-note-resource="${note.resource_id || ''}">
-        ${parts.quoted ? `<span class="note-quote-preview">${quotePreview.slice(0, 180)}${quotePreview.length > 180 ? '…' : ''}</span>${memoPreview ? `<span class="note-memo-preview">${memoPreview}</span>` : ''}` : `<span class="note-memo-preview">${memoPreview.slice(0, 180)}${memoPreview.length > 180 ? '…' : ''}</span>`}
+        ${listRow ? `<span class="note-row-title" title="${esc(row.title)}">${esc(row.title)}</span>` : ''}${parts.quoted ? `<span class="note-quote-preview">${quotePreview.slice(0, 180)}${quotePreview.length > 180 ? '…' : ''}</span>${memoPreview ? `<span class="note-memo-preview">${memoPreview}</span>` : ''}` : `<span class="note-memo-preview">${memoPreview.slice(0, 180)}${memoPreview.length > 180 ? '…' : ''}</span>`}
       </a>
-      <button class="note-menu-button" data-note-menu="${note.id}" type="button" aria-label="메모 메뉴">⋯</button>
+      ${noteMenu(note.id)}
+      ${listRow && row.preview ? `<span class="note-row-preview">${esc(row.preview)}</span>` : ''}
     </div>
-    <div class="meta">${noteTypeBadge(note.note_type)}${note.note_type ? ' · ' : ''}${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
-    <div class="note-actions" data-note-actions="${note.id}" hidden><button type="button" data-note-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
+    ${listRow ? `<div class="note-row-full" id="note-full-${note.id}" hidden>${noteFullHtml(note)}</div>` : ''}
+    <div class="meta"><span class="note-meta-type">${noteTypeBadge(note.note_type)}${note.note_type ? ' · ' : ''}</span>${new Date(note.updated_at).toLocaleDateString('ko-KR')}</div>
     <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions(note.note_type || '')}</select></div><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-edit-cancel="${note.id}">취소</button></div><div class="status" aria-live="polite"></div></form>
   </div>`;
+}
+
+function noteMenuParts(toggle) {
+  const panel = toggle && document.getElementById?.(toggle.getAttribute('aria-controls'));
+  return { toggle, panel, items: panel ? [...panel.querySelectorAll('[role="menuitem"]')] : [] };
+}
+
+function setNoteMenuOpen(toggle, open, { focus = null } = {}) {
+  const { panel, items } = noteMenuParts(toggle);
+  if (!panel) return;
+  if (open) document.querySelectorAll('[data-note-menu][aria-expanded="true"]').forEach((other) => { if (other !== toggle) setNoteMenuOpen(other, false); });
+  toggle.setAttribute('aria-expanded', String(open));
+  panel.hidden = !open;
+  if (open && focus === 'first') items[0]?.focus();
+  if (open && focus === 'last') items[items.length - 1]?.focus();
+  if (!open && focus === 'toggle') toggle.focus();
+}
+
+function closeOpenNoteMenus(except = null) {
+  document.querySelectorAll('[data-note-menu][aria-expanded="true"]').forEach((toggle) => {
+    if (!except || !toggle.closest('[data-note-menu-wrap]')?.contains(except)) setNoteMenuOpen(toggle, false);
+  });
+}
+
+document.addEventListener('click', (event) => closeOpenNoteMenus(event.target));
+document.addEventListener('focusin', (event) => closeOpenNoteMenus(event.target));
+
+function bindNoteMenus() {
+  document.querySelectorAll('[data-note-menu]').forEach((toggle) => {
+    toggle.addEventListener('click', () => setNoteMenuOpen(toggle, toggle.getAttribute('aria-expanded') !== 'true', { focus: 'first' }));
+    toggle.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      setNoteMenuOpen(toggle, true, { focus: event.key === 'ArrowDown' ? 'first' : 'last' });
+    });
+    const { panel, items } = noteMenuParts(toggle);
+    panel?.addEventListener('keydown', (event) => {
+      const index = items.indexOf(document.activeElement);
+      const next = { ArrowDown: index + 1, ArrowUp: index - 1, Home: 0, End: items.length - 1 }[event.key];
+      if (next !== undefined) {
+        event.preventDefault();
+        items[(next + items.length) % items.length]?.focus();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        setNoteMenuOpen(toggle, false, { focus: 'toggle' });
+      } else if (event.key === 'Tab') {
+        setNoteMenuOpen(toggle, false);
+      }
+    });
+    panel?.addEventListener('click', (event) => {
+      if (event.target.closest?.('[role="menuitem"]')) setNoteMenuOpen(toggle, false);
+    });
+  });
 }
 
 function bindNoteActions() {
@@ -336,21 +414,25 @@ function bindNoteActions() {
       notesView();
     }
   }));
-  document.querySelectorAll('[data-note-menu]').forEach((button) => button.addEventListener('click', () => {
-    const actions = document.querySelector(`[data-note-actions="${button.dataset.noteMenu}"]`);
-    if (actions) actions.hidden = !actions.hidden;
+  bindNoteMenus();
+  document.querySelectorAll('[data-note-expand]').forEach((button) => button.addEventListener('click', () => {
+    const open = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', String(open));
+    button.closest('[data-note-item]')?.classList.toggle('note-row-expanded', open);
+    const full = document.getElementById(button.getAttribute('aria-controls'));
+    if (full) full.hidden = !open;
   }));
   document.querySelectorAll('[data-note-edit]').forEach((button) => button.addEventListener('click', () => {
     const item = button.closest('[data-note-item]');
     item?.querySelector('[data-note-display]')?.setAttribute('hidden', '');
+    item?.classList.add('note-row-editing');
     const form = item?.querySelector('[data-note-edit-form]');
     if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); }
-    const actions = item?.querySelector('[data-note-actions]');
-    if (actions) actions.hidden = true;
   }));
   document.querySelectorAll('[data-note-edit-cancel]').forEach((button) => button.addEventListener('click', () => {
     const item = button.closest('[data-note-item]');
     item?.querySelector('[data-note-display]')?.removeAttribute('hidden');
+    item?.classList.remove('note-row-editing');
     const form = item?.querySelector('[data-note-edit-form]');
     if (form) form.hidden = true;
   }));
@@ -776,39 +858,40 @@ async function notesView() {
   root.innerHTML = shell(`
     <section class="hero memo-hero"><h1>메모</h1><p>기록하고, 연결한다.</p></section>
     <div class="notes-layout">
-      <section class="card">
+      <section class="card notes-compose">
         <h2>새 메모</h2>
         <form id="independent-note-form" class="form">
-          <div class="field"><textarea name="body" required placeholder="지금 떠오른 생각을 그대로…"></textarea></div>
-          <div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions()}</select></div>
-          <button class="btn">저장</button><div id="ind-note-status" class="status"></div>
+          <div class="field note-compose-body"><textarea name="body" required placeholder="지금 떠오른 생각을 그대로…" aria-label="새 메모 내용" aria-keyshortcuts="Control+Enter Meta+Enter"></textarea></div>
+          <div class="field note-compose-type"><label>유형 (선택)</label><select name="note_type" aria-label="유형 (선택)">${noteTypeOptions()}</select></div>
+          <button class="btn note-compose-save">저장</button><div id="ind-note-status" class="status"></div>
         </form>
         <div class="note-type-manager">
-          <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button">유형 관리</button>
-          <div id="note-type-manager-panel" hidden>
-            <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 유형"><button class="btn secondary small" type="submit">추가</button></form>
+          <button class="note-type-manage-toggle" id="note-type-manage-toggle" type="button" aria-expanded="false" aria-controls="note-type-manager-panel">유형 관리</button>
+          <div id="note-type-manager-panel" class="note-type-manager-panel" hidden>
+            <form id="note-type-form" class="note-type-form"><input name="name" maxlength="30" placeholder="새 유형" aria-label="새 유형 이름"><button class="btn secondary small" type="submit">추가</button></form>
             <div class="note-type-list">${state.noteTypes.map((item)=>`<div class="note-type-row"><span title="${esc(item.name)}">${esc(item.name)}</span><button type="button" data-note-type-edit="${item.id}" aria-label="${esc(item.name)} 이름 수정">수정</button><button type="button" data-delete-note-type="${item.id}" aria-label="${esc(item.name)} 삭제">삭제</button><form class="note-type-rename-form" data-note-type-rename="${item.id}" hidden><input name="name" value="${esc(item.name)}" maxlength="30" required aria-label="새 유형 이름"><button type="submit">저장</button><button type="button" data-note-type-cancel="${item.id}">취소</button></form></div>`).join('') || '<span class="muted">추가한 유형 없음</span>'}</div>
           </div>
         </div>
       </section>
-      <section class="card">
+      <section class="card notes-list">
         <h2>메모</h2>
         <div class="note-type-filters" data-swipe-ignore role="group" aria-label="메모 유형 필터"><button type="button" data-note-filter="" aria-pressed="${!selectedNoteTypeFilter}">전체</button>${noteTypeNames('', true).map((name) => `<button type="button" data-note-filter="${esc(name)}" title="${esc(name)}" aria-pressed="${selectedNoteTypeFilter === name}">${esc(name)}</button>`).join('')}</div>
         ${state.notes.map((note) => {
-          if (note.resource_id) return noteItem(note);
+          if (note.resource_id) return noteItem(note, { listRow: true });
           const relations = relationMap.get(`note:${note.id}`) ?? [];
-          return `<details class="note-record" data-note-record="${note.id}" data-note-list-item data-note-type="${esc(note.note_type || '')}"><summary>${noteTypeBadge(note.note_type)}<span>${esc(note.body).slice(0, 90)}${note.body.length > 90 ? '…' : ''}</span></summary>
+          const row = noteRowText(note);
+          return `<div class="note-row note-record-row" data-note-list-item data-note-type="${esc(note.note_type || '')}"><details class="note-record" data-note-record="${note.id}"><summary><span class="note-row-chevron" aria-hidden="true">▸</span>${noteTypeBadge(note.note_type)}<span class="note-record-summary">${esc(note.body).slice(0, 90)}${note.body.length > 90 ? '…' : ''}</span><span class="note-row-title" title="${esc(row.title)}">${esc(row.title)}</span>${row.preview ? `<span class="note-row-preview">${esc(row.preview)}</span>` : ''}<span class="note-row-date">${new Date(note.updated_at).toLocaleDateString('ko-KR')}</span></summary>
             <div class="note-body">${esc(note.body).replace(/\n/g, '<br>')}</div>
             <div class="meta">${new Date(note.updated_at).toLocaleString('ko-KR')}</div>
-            <div class="note-record-actions"><button type="button" data-note-record-edit="${note.id}">수정</button><button type="button" data-note-delete="${note.id}">삭제</button></div>
     <form class="note-inline-edit" data-note-edit-form="${note.id}" hidden><textarea required maxlength="20000">${esc(note.body)}</textarea><div class="field"><label>유형 (선택)</label><select name="note_type">${noteTypeOptions(note.note_type || '')}</select></div><div class="inline-actions"><button class="btn small" type="submit">저장</button><button class="btn secondary small" type="button" data-note-record-cancel="${note.id}">취소</button></div><div class="status" aria-live="polite"></div></form>
             <div class="note-links"><h3>이 메모 연결하기</h3>${relationManager('note', note.id, relations)}</div>
-          </details>`;
+          </details>${noteMenu(note.id, 'data-note-record-edit')}</div>`;
         }).join('')}
         <div id="note-filter-empty" class="empty" hidden></div>
       </section>
     </div>
   `, 'notes');
+  document.querySelector('.shell')?.classList?.add('notes-shell');
   bindCommon();
   bindNoteActions();
   bindRelationToggles(relationMap);
@@ -817,9 +900,11 @@ async function notesView() {
     selectedNoteTypeFilter = button.dataset.noteFilter;
     applyNoteTypeFilter();
   }));
-  document.querySelector('#note-type-manage-toggle')?.addEventListener('click', () => {
+  document.querySelector('#note-type-manage-toggle')?.addEventListener('click', (event) => {
     const panel = document.querySelector('#note-type-manager-panel');
-    if (panel) panel.hidden = !panel.hidden;
+    if (!panel) return;
+    panel.hidden = !panel.hidden;
+    event.currentTarget.setAttribute('aria-expanded', String(!panel.hidden));
   });
   document.querySelector('#note-type-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -882,7 +967,8 @@ async function notesView() {
     }
   }));
   document.querySelectorAll('[data-note-record-edit]').forEach((button) => button.addEventListener('click', () => {
-    const record = button.closest('[data-note-record]');
+    const record = button.closest('.note-record-row')?.querySelector('[data-note-record]');
+    if (record) record.open = true;
     const form = record?.querySelector('[data-note-edit-form]');
     if (form) { form.hidden = false; form.querySelector('textarea')?.focus(); }
   }));
@@ -891,8 +977,21 @@ async function notesView() {
     if (form) form.hidden = true;
   }));
 
-  document.querySelector('#independent-note-form').addEventListener('submit', async (event) => {
+  const noteForm = document.querySelector('#independent-note-form');
+  const noteSaveButton = noteForm.querySelector?.('button');
+  const noteBody = noteForm.querySelector?.('textarea');
+  let savingNewNote = false;
+  noteBody?.addEventListener('input', () => autosizeNoteBody(noteBody));
+  noteBody?.addEventListener('keydown', (event) => {
+    if (!isSaveShortcut(event)) return;
     event.preventDefault();
+    noteSaveButton?.click();
+  });
+  noteForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (savingNewNote) return;
+    savingNewNote = true;
+    if (noteSaveButton) noteSaveButton.disabled = true;
     const stillCurrent = currentViewGuard();
     const status = document.querySelector('#ind-note-status');
     status.textContent = '저장 중…';
@@ -903,10 +1002,26 @@ async function notesView() {
       selectedNoteTypeFilter = '';
       notesView();
     } catch (error) {
+      savingNewNote = false;
+      if (noteSaveButton) noteSaveButton.disabled = false;
       if (!stillCurrent()) return;
       showNoteError(error, status);
     }
   });
+}
+
+// Ctrl+Enter (macOS: Cmd+Enter) saves. Keydowns fired while an IME (e.g. Korean) is still composing are
+// ignored, so the last syllable is committed before saving and one press cannot save twice.
+function isSaveShortcut(event) {
+  return event.key === 'Enter' && Boolean(event.ctrlKey || event.metaKey) && !event.isComposing && event.keyCode !== 229;
+}
+
+// PC only: the new-memo box grows with its text up to the CSS max-height; narrower screens keep the fixed box.
+function autosizeNoteBody(textarea) {
+  textarea.style.height = '';
+  if (!globalThis.matchMedia?.('(min-width:1024px)').matches) return;
+  const border = textarea.offsetHeight - textarea.clientHeight;
+  textarea.style.height = `${textarea.scrollHeight + border}px`;
 }
 
 function topicsView() {
