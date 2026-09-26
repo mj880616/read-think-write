@@ -1063,8 +1063,14 @@ function betaDeniedView() {
     <p class="muted">현재 읽생기 무료 베타는 초대된 Google 계정만 이용할 수 있습니다.</p>
     <p class="beta-denied-email">${esc(user?.email || '')}</p>
     <div class="inline-actions"><button class="btn secondary" type="button" data-logout>다른 계정으로 로그인</button></div>
+    <div class="account-delete-panel" id="account-deletion">
+      <p class="muted">이 계정에 남은 읽생기 데이터와 로그인 계정을 삭제할 수 있습니다. 같은 로그인 계정을 다른 서비스에서도 사용 중이면 로그인 계정은 유지되고 읽생기 데이터만 삭제됩니다.</p>
+      <button class="btn danger" id="delete-account" type="button">내 계정과 데이터 삭제</button>
+      <div class="status" id="delete-account-status" aria-live="polite"></div>
+    </div>
   </section></div>`;
   document.querySelector('[data-logout]')?.addEventListener('click', () => api.signOut().catch(() => {}));
+  bindAccountDeletion();
 }
 
 function aboutView() {
@@ -1079,7 +1085,7 @@ function aboutView() {
       <h2>AI 기능</h2>
       <p>AI 읽기와 생각 확장을 실행하면 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 무료 베타에서는 비용과 안정성을 위해 일일 사용 횟수를 제한합니다.</p>
       <h2 id="account-deletion">계정과 삭제</h2>
-      <p>로그아웃은 현재 기기의 로그인 세션만 종료합니다. 계정 삭제를 실행하면 해당 계정의 읽생기 개인 데이터와 인증 계정을 영구적으로 삭제합니다.</p>
+      <p>로그아웃은 현재 기기의 로그인 세션만 종료합니다. 계정 삭제를 실행하면 해당 계정의 읽생기 개인 데이터와 인증 계정을 영구적으로 삭제합니다. 같은 로그인 계정을 다른 서비스에서도 사용 중이면 그 서비스를 위해 로그인 계정은 유지되고, 읽생기 데이터와 읽생기 이용 권한만 삭제됩니다.</p>
       <div class="account-delete-panel">
         <p><strong>삭제되는 항목:</strong> 저장한 글, 메모, 질문, 책갈피, 글쓰기 기록, 관련 개인 설정 및 인증 계정.</p>
         <p class="muted">삭제 후 복구할 수 없습니다. 필요한 기록은 먼저 별도로 보관하세요.</p>
@@ -1090,7 +1096,15 @@ function aboutView() {
       <p>보낸 피드백은 베타 운영자가 서비스 개선을 위해 확인합니다. 비밀번호, 주민등록번호, 건강정보 등 민감한 개인정보는 피드백에 포함하지 마세요.</p>
     </section>`, 'about');
   bindCommon();
+  bindAccountDeletion();
 
+  if (deletionRequested) {
+    localStorage.removeItem('rtw_delete_account_pending_v1');
+    requestAnimationFrame(() => document.querySelector('#account-deletion')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+}
+
+function bindAccountDeletion() {
   const deleteButton = document.querySelector('#delete-account');
   const deleteStatus = document.querySelector('#delete-account-status');
   deleteButton?.addEventListener('click', async () => {
@@ -1113,26 +1127,23 @@ function aboutView() {
     }
 
     try {
-      await api.deleteAccount();
+      const result = await api.deleteAccount();
       globalThis.localStorage?.removeItem('rtw_delete_account_pending_v1');
       setAuthUser(null);
       loginView();
-      alert('읽생기 계정과 개인 데이터가 삭제되었습니다.');
+      alert(result?.mode === 'rtw_data_only'
+        ? '읽생기 개인 데이터와 이용 권한이 삭제되었습니다. 이 로그인 계정은 다른 서비스에서 사용 중이어서 계정 자체는 유지됩니다.'
+        : '읽생기 계정과 개인 데이터가 삭제되었습니다.');
     } catch (error) {
       console.error('계정 삭제 실패', error);
       deleteButton.disabled = false;
       deleteButton.textContent = '내 계정과 데이터 삭제';
       if (deleteStatus) {
-        deleteStatus.textContent = error.message || '계정을 삭제하지 못했습니다. 다시 시도해주세요.';
+        deleteStatus.textContent = error.message || '계정을 삭제하지 못했습니다. 다시 누르면 남은 항목을 이어서 삭제합니다.';
         deleteStatus.classList.add('error');
       }
     }
   });
-
-  if (deletionRequested) {
-    localStorage.removeItem('rtw_delete_account_pending_v1');
-    requestAnimationFrame(() => document.querySelector('#account-deletion')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  }
 }
 
 async function feedbackView() {
