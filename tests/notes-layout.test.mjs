@@ -189,3 +189,12 @@ test('Korean composition then Ctrl+Enter saves once, and repeats during a save a
   assert.equal(h.saveButton.disabled, true);
   finish();
 });
+
+test('styles.css and its loader (index.html) carry the same cache version', () => {
+  const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const loader = indexHtml.match(/<link rel="stylesheet" href="\.\/src\/styles\.css\?v=([\w.-]+)" \/>/);
+  assert.ok(loader, 'index.html loads styles.css with a ?v= cache version');
+  const declared = styles.match(/^\/\* cache version ([\w.-]+):/);
+  assert.ok(declared, 'styles.css declares its cache version on the first line');
+  assert.equal(loader[1], declared[1], 'bump both together so browsers never mix a new loader with a stale stylesheet');
+});
