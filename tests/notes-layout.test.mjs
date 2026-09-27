@@ -4,7 +4,7 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 function mediaBlock(query) {
   const start = styles.indexOf(`${query}{\n`);
   assert.notEqual(start, -1, `missing ${query}`);

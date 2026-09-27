@@ -2,7 +2,7 @@ import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.2.6/+esm';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked@16.2.1/lib/marked.esm.js';
 import { supabase } from './supabase.js';
 import * as api from './api.js';
-import { APP_BASE, APP_BUILD } from './config.js';
+import { APP_BASE } from './config.js';
 import { formatDate, groupResourcesByMonth, matchesQuery, safeHttpUrl } from './model.js';
 import { bookmarkSelectionData, locateBookmarkRange } from './bookmark-location.js';
 import { restoreRedirect } from './redirect.js';
@@ -38,6 +38,9 @@ const SWIPE_TABS = [
 ];
 let user = null;
 let authEpoch = 0;
+let startupRun = 0;
+let startupBlocked = false;
+let authVerifiedUserId = null;
 let dataReadyUserId = null;
 let accessReadyUserId = null;
 let betaAccess = null;
@@ -53,7 +56,7 @@ function clearUserState() {
 }
 
 function isCurrentRequest(userId, epoch, route) {
-  return user?.id === userId && authEpoch === epoch && (route === undefined || pathFromLocation() === route);
+  return !startupBlocked && !globalThis.__rtwEntryBlocked && user?.id === userId && authEpoch === epoch && (route === undefined || pathFromLocation() === route);
 }
 
 function currentViewGuard() {
@@ -70,12 +73,34 @@ function setAuthUser(next) {
   }
   authEpoch += 1;
   user = next;
+  authVerifiedUserId = null;
   dataReadyUserId = null;
   accessReadyUserId = null;
   betaAccess = null;
   clearUserState();
   root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
   return true;
+}
+
+function waitForStartup(task, timeoutMs, code) {
+  let timer;
+  return Promise.race([
+    Promise.resolve().then(task),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(Object.assign(new Error('Startup timed out'), { code })), timeoutMs);
+    })
+  ]).finally(() => clearTimeout(timer));
+}
+
+function showStartupFailure(code) {
+  startupBlocked = true;
+  startupRun += 1;
+  authEpoch += 1;
+  authVerifiedUserId = null;
+  dataReadyUserId = null;
+  clearUserState();
+  root.innerHTML = `<div class="shell"><div class="empty" role="alert">읽생기를 열지 못했습니다. 연결 상태를 확인하고 다시 시도해주세요.<div class="meta">${code}</div><button class="btn small" id="retry-startup" type="button">다시 시도</button></div></div>`;
+  document.querySelector('#retry-startup')?.addEventListener('click', () => location.reload());
 }
 
 function esc(value = '') {
@@ -192,15 +217,16 @@ function bindCommon() {
   });
 }
 
-async function refreshState() {
+async function refreshState(startupRunToken) {
   const userId = user?.id;
   const epoch = authEpoch;
-  if (!userId || dataReadyUserId !== userId) return false;
+  if (!userId || (startupRunToken === undefined && dataReadyUserId !== userId)) return false;
   const [resources, notes, topics, questions, bookmarks, noteTypes] = await Promise.all([
     api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks(), api.listNoteTypes()
   ]);
-  if (!isCurrentRequest(userId, epoch)) return false;
+  if (!isCurrentRequest(userId, epoch) || (startupRunToken !== undefined && startupRunToken !== startupRun)) return false;
   state = { resources, notes, topics, questions, bookmarks, relations: [], noteTypes };
+  if (startupRunToken !== undefined) dataReadyUserId = userId;
   return true;
 }
 
@@ -1419,16 +1445,26 @@ function notFound() {
 }
 
 async function render() {
-  if (!user) {
+  if (startupBlocked || globalThis.__rtwEntryBlocked) return;
+  const run = ++startupRun;
+  if (!user || authVerifiedUserId !== user.id) {
     const epoch = authEpoch;
     root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
-    const current = await api.currentUser();
-    if (authEpoch !== epoch) return;
+    let current;
+    try {
+      current = await waitForStartup(() => api.currentUser(), 10_000, 'AUTH_TIMEOUT');
+    } catch (error) {
+      if (run === startupRun && authEpoch === epoch && !globalThis.__rtwEntryBlocked) showStartupFailure(error.code === 'AUTH_TIMEOUT' ? error.code : 'AUTH_ERROR');
+      return;
+    }
+    if (run !== startupRun || authEpoch !== epoch || globalThis.__rtwEntryBlocked) return;
     if (!current) {
+      if (user) setAuthUser(null);
       loginView();
       return;
     }
     setAuthUser(current);
+    authVerifiedUserId = current.id;
   }
 
   if (accessReadyUserId !== user.id) {
@@ -1436,18 +1472,13 @@ async function render() {
     const epoch = authEpoch;
     root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
     try {
-      const access = await api.getBetaAccess(user.email);
-      if (!isCurrentRequest(userId, epoch)) return;
+      const access = await waitForStartup(() => api.getBetaAccess(user.email), 15_000, 'BETA_TIMEOUT');
+      if (run !== startupRun || !isCurrentRequest(userId, epoch) || globalThis.__rtwEntryBlocked) return;
       betaAccess = access;
       accessReadyUserId = userId;
     } catch (error) {
-      if (!isCurrentRequest(userId, epoch)) return;
-      root.innerHTML = '<div class="shell"><div class="empty">이용 권한을 확인하지 못했습니다.<br><button class="btn small" id="retry-beta-access" type="button">다시 시도</button><div class="status error">' + esc(error.message) + '</div><div class="meta">build ' + esc(APP_BUILD) + '</div></div></div>';
-      document.querySelector('#retry-beta-access')?.addEventListener('click', () => {
-        accessReadyUserId = null;
-        betaAccess = null;
-        render();
-      });
+      if (run !== startupRun || !isCurrentRequest(userId, epoch) || globalThis.__rtwEntryBlocked) return;
+      showStartupFailure(error.code === 'BETA_TIMEOUT' ? error.code : 'BETA_ERROR');
       return;
     }
   }
@@ -1461,10 +1492,18 @@ async function render() {
     const userId = user.id;
     const epoch = authEpoch;
     root.innerHTML = '<div class="shell"><div class="empty">읽생기 여는 중…</div></div>';
-    if (!isCurrentRequest(userId, epoch)) return;
-    dataReadyUserId = userId;
-    if (!await refreshState()) return;
+    if (run !== startupRun || !isCurrentRequest(userId, epoch) || globalThis.__rtwEntryBlocked) return;
+    try {
+      if (!await waitForStartup(() => refreshState(run), 15_000, 'DATA_TIMEOUT')) return;
+    } catch (error) {
+      if (run !== startupRun || !isCurrentRequest(userId, epoch) || globalThis.__rtwEntryBlocked) return;
+      showStartupFailure(error.code === 'DATA_TIMEOUT' ? error.code : 'DATA_ERROR');
+      return;
+    }
+    if (run !== startupRun || !isCurrentRequest(userId, epoch) || globalThis.__rtwEntryBlocked) return;
   }
+
+  if (globalThis.__rtwEntryBlocked) return;
 
   if (globalThis.localStorage?.getItem('rtw_delete_account_pending_v1') === '1') {
     history.replaceState({}, '', href('/about/?delete-account=1'));
@@ -1606,8 +1645,10 @@ function bindPrimaryTabSwipe() {
 bindPrimaryTabSwipe();
 window.addEventListener('popstate', render);
 supabase.auth.onAuthStateChange((_event, session) => {
+  if (startupBlocked || globalThis.__rtwEntryBlocked) return;
   const next = session?.user ?? null;
   if ((_event === 'SIGNED_OUT' || _event === 'INITIAL_SESSION') && !next && !user) {
+    startupRun += 1;
     authEpoch += 1;
     clearUserState();
     loginView();
@@ -1615,6 +1656,7 @@ supabase.auth.onAuthStateChange((_event, session) => {
   }
 
   if (!setAuthUser(next)) return;
+  startupRun += 1;
 
   // Supabase warns against starting another Supabase request directly inside
   // onAuthStateChange. Native OAuth emits SIGNED_IN without a page reload, so

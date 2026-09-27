@@ -11,7 +11,7 @@ assert.match(api, /Authorization:\s*`Bearer \$\{token\}`/);
 assert.match(api, /apikey:\s*SUPABASE_PUBLISHABLE_KEY/);
 assert.doesNotMatch(api, /rtw_beta_access_status/);
 assert.match(api, /8000/);
-assert.match(main, /이용 권한을 확인하지 못했습니다/);
-assert.match(main, /retry-beta-access/);
+assert.match(main, /BETA_TIMEOUT/);
+assert.match(main, /BETA_ERROR/);
 
 console.log('beta access Edge Function contract ok');
