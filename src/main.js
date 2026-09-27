@@ -205,20 +205,17 @@ async function refreshState() {
 }
 
 function loginView() {
-  root.innerHTML = `<div class="shell login-wrap">
+  root.innerHTML = `<div class="shell login-wrap login-screen">
     <section class="login">
-      <div class="eyebrow">Personal knowledge archive</div>
       <h1>읽고 생각하고 기록하기</h1>
-      <p class="muted">읽은 것을 저장하는 데서 끝내지 않고, 생각과 질문을 다시 연결하는 개인 작업공간.</p>
       <p class="login-privacy">현재 무료 베타는 초대된 Google 계정만 이용할 수 있습니다. 로그인 정보는 계정 식별과 접근 확인에 사용하며, 글·메모·질문·책갈피 등 개인 기록은 계정별로 분리해 보관합니다.</p>
       <details class="beta-policy">
         <summary>베타 이용·개인정보 안내</summary>
         <div class="beta-policy-body">
           <p><strong>베타 이용.</strong> 현재 기능은 시험 운영 중이며 변경·중단될 수 있습니다. 개인 기록의 별도 백업이 필요한 경우 이용자가 직접 보관해야 합니다.</p>
           <p><strong>저장 정보.</strong> Google 계정 이메일, 이용자가 직접 저장한 글·메모·질문·책갈피·글쓰기 기록, 기능 이용에 필요한 최소한의 사용량 정보를 저장합니다.</p>
-          <p><strong>AI 처리.</strong> AI 읽기·생각 확장 기능을 실행할 때 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다. 외부 GPT 직접쓰기 경로는 운영자 계정에만 연결되어 있습니다.</p>
+          <p><strong>AI 처리.</strong> AI 읽기·생각 확장 기능을 실행할 때 해당 기능에 필요한 글과 일부 개인 기록이 AI 처리에 사용됩니다.</p>
           <p><strong>삭제.</strong> 계정 삭제 기능을 사용하면 해당 계정에 연결된 읽생기 개인 데이터와 인증 계정을 삭제합니다. 서비스 운영·보안상 필요한 최소 로그는 별도 시스템의 보존정책에 따를 수 있습니다.</p>
-          <p>피드백은 서비스 개선 목적으로 확인하며, 민감한 개인정보는 피드백에 적지 않는 것을 권장합니다.</p>
         </div>
       </details>
       <form id="login-form" class="form">
