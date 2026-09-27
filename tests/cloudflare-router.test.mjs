@@ -68,7 +68,7 @@ for (const host of hosts) {
     assert.equal(post.headers.get('Allow'), 'GET, HEAD');
 
     await withOrigin(() => new Response('upstream missing', { status: 404 }), async (requests) => {
-      for (const path of ['/notes/', '/src/missing.js', '/read-think-write', '/.well-known/assetlinks.json']) {
+      for (const path of ['/src/missing.js', '/.well-known/assetlinks.json']) {
         const response = await router.fetch(new Request(`https://${host}${path}`, { headers: { Accept: 'text/html' } }));
         assert.equal(response.status, 404, path);
         assert.equal(response.headers.get('Location'), null);
@@ -103,3 +103,48 @@ test('unknown hosts are 404 and never reach the origin', async () => {
     }
   });
 });
+
+for (const host of hosts) {
+  test(`${host}: unprefixed GET documents redirect to the app shell with the complete path and query`, async () => {
+    const cases = [
+      ['/notes/?note=abc&mode=full', '/notes/?note=abc&mode=full'],
+      ['/topics/11111111-1111-1111-1111-111111111111/', '/topics/11111111-1111-1111-1111-111111111111/'],
+      ['/notes/한글/깊은-경로/?q=한글&sort=new', '/notes/%ED%95%9C%EA%B8%80/%EA%B9%8A%EC%9D%80-%EA%B2%BD%EB%A1%9C/?q=%ED%95%9C%EA%B8%80&sort=new']
+    ];
+    await withOrigin(() => { throw new Error('short document path must not fetch HTML'); }, async (requests) => {
+      for (const [path, expected] of cases) {
+        const response = await router.fetch(new Request(`https://${host}${path}`, {
+          headers: { Accept: 'text/html,application/xhtml+xml' }
+        }));
+        assert.equal(response.status, 302, path);
+        assert.equal(await response.text(), '');
+        const location = new URL(response.headers.get('Location'));
+        assert.equal(location.origin, `https://${host}`);
+        assert.equal(location.pathname, '/read-think-write/');
+        assert.equal(location.searchParams.get('redirect'), expected);
+      }
+      assert.equal(requests.length, 0);
+    });
+  });
+
+  test(`${host}: only GET document requests recover; assets and HEAD remain 404`, async () => {
+    await withOrigin(() => { throw new Error('short path must not fetch origin'); }, async () => {
+      const documentByDest = await router.fetch(new Request(`https://${host}/records/123/?tab=all`, {
+        headers: { 'Sec-Fetch-Dest': 'document' }
+      }));
+      assert.equal(documentByDest.status, 302);
+      assert.equal(new URL(documentByDest.headers.get('Location')).searchParams.get('redirect'), '/records/123/?tab=all');
+      for (const [path, options] of [
+        ['/notes/', { headers: { Accept: 'application/json' } }],
+        ['/notes/', { method: 'HEAD', headers: { Accept: 'text/html' } }],
+        ['/src/missing.js', { headers: { Accept: 'text/javascript' } }],
+        ['/src/missing.js', { headers: { Accept: 'text/html' } }],
+        ['/.well-known/assetlinks.json', { headers: { Accept: 'text/html' } }]
+      ]) {
+        const response = await router.fetch(new Request(`https://${host}${path}`, options));
+        assert.equal(response.status, 404, path);
+        assert.equal(response.headers.get('Location'), null);
+      }
+    });
+  });
+}

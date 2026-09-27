@@ -11,7 +11,8 @@
 - 코드에서는 `read.bokdoong.com`과 시험 호스트를 동일하게 처리한다. 운영 호스트 연결은
   별도 전환 단계에서만 설정한다. 현재 공용 Worker의 운영 주소를 이 설정에 추가하지 않는다.
 - `.github/workflows/rtw-worker-deploy.yml`은 `workflow_dispatch`로만 실행된다.
-  `main`에서만 실행되며, 배포 후 시험 호스트의 루트, 실제 CSS·JS, 없는 자원 404를 검사한다.
+  `main`에서만 실행되며, 배포 후 시험 호스트의 루트, 실제 CSS·JS, 없는 자원 404,
+  문서 경로 복구를 검사한다.
 - 자동 배포는 없다. GitHub Pages가 해당 `main`의 정적 파일을 공개한 뒤 수동 실행한다.
   Worker 배포는 Supabase 설정이나 DNS/운영 주소 전환을 대신하지 않는다.
 
@@ -28,7 +29,13 @@ Worker와 Custom Domain 생성 이후에는 `rtw-router`에 한정한 `Editor`�
 Custom Domain 변경을 계속 워크플로에서 관리하는 동안에는 zone의
 `Workers Routes Write`도 유지한다. 토큰 값은 저장소에 넣지 않는다.
 
-## 현재 범위
+## 동작과 다음 단계
 
-커밋 1은 공용 Worker 읽생기 분기와 같은 동작이다. 접두사 없는 문서 경로도 404이며,
-이 상태 자체로 시험 주소에 배포 가능하다. 커밋 2에서 문서 새로고침 복구를 별도로 추가한다.
+첫 커밋은 공용 Worker 읽생기 분기와 같은 동작으로 단독 배포 가능하다. 두 번째 커밋은
+접두사 없는 GET 문서 경로만 `/read-think-write/?redirect=...`로 302 이동시킨다.
+문서가 아닌 짧은 경로와 없는 자원은 404이고 짧은 경로에 HTML을 직접 보내지 않는다.
+
+로그인 상태 실기기 검증 전에 Supabase Auth의 로그인 복귀 허용 주소에 시험 주소를
+추가해야 한다. 저장소의 `supabase/functions/rtw-beta-status/index.ts`와
+`supabase/functions/rtw-delete-account/index.ts`에는 시험 주소가 아직 허용 출처로
+등록되지 않았다. 이 단계에서는 Supabase를 변경하지 않는다.

@@ -27,7 +27,24 @@ async function check() {
 
   const missing = await fetch(`${origin}/read-think-write/src/__missing-rtw-worker-check__.js`, { redirect: 'manual' });
   if (missing.status !== 404) throw new Error(`missing asset: expected 404, got ${missing.status}`);
-  console.log('OK root, app shell, CSS, JavaScript, missing asset');
+  const shortMissing = await fetch(`${origin}/src/__missing-rtw-worker-check__.js`, {
+    headers: { Accept: 'text/javascript' },
+    redirect: 'manual'
+  });
+  if (shortMissing.status !== 404) throw new Error(`short missing asset: expected 404, got ${shortMissing.status}`);
+
+  const document = await fetch(`${origin}/notes/?note=probe&mode=full`, {
+    headers: { Accept: 'text/html' },
+    redirect: 'manual'
+  });
+  const recovery = new URL(document.headers.get('Location') || '/', origin);
+  if (document.status !== 302 || recovery.pathname !== '/read-think-write/'
+      || recovery.searchParams.get('redirect') !== '/notes/?note=probe&mode=full') {
+    throw new Error(`document recovery: HTTP ${document.status}, ${document.headers.get('Location')}`);
+  }
+  const recoveredPage = await fetch(recovery);
+  if (recoveredPage.status !== 200) throw new Error(`recovered app shell: HTTP ${recoveredPage.status}`);
+  console.log('OK root, app shell, CSS, JavaScript, missing assets, document recovery');
 }
 
 let lastError;

@@ -3,6 +3,13 @@ const PAGES_ORIGIN = 'https://mj880616.github.io';
 const READ_BASE = '/read-think-write/';
 const READ_HOSTS = new Set(['read.bokdoong.com', 'read-test.bokdoong.com']);
 
+function isDocumentRequest(request, path) {
+  // File-like paths remain resources even when opened in a browser tab.
+  if (/\.[^/]+$/.test(path)) return false;
+  return request.headers.get('Sec-Fetch-Dest') === 'document'
+    || request.headers.get('Accept')?.includes('text/html');
+}
+
 export default {
   async fetch(request) {
     const incoming = new URL(request.url);
@@ -25,7 +32,14 @@ export default {
       incoming.pathname = READ_BASE;
       return Response.redirect(incoming.href, 302);
     }
-    if (!incoming.pathname.startsWith(READ_BASE)) return new Response('Not found', { status: 404 });
+    if (!incoming.pathname.startsWith(READ_BASE)) {
+      if (request.method === 'GET' && isDocumentRequest(request, incoming.pathname)) {
+        const recovery = new URL(READ_BASE, incoming);
+        recovery.searchParams.set('redirect', incoming.pathname + incoming.search);
+        return Response.redirect(recovery.href, 302);
+      }
+      return new Response('Not found', { status: 404 });
+    }
 
     const originUrl = new URL(incoming.pathname, PAGES_ORIGIN);
     originUrl.search = incoming.search;
