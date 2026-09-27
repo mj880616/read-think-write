@@ -205,11 +205,9 @@ async function refreshState() {
 }
 
 function loginView() {
-  root.innerHTML = `<div class="shell login-wrap">
+  root.innerHTML = `<div class="shell login-wrap login-screen">
     <section class="login">
-      <div class="eyebrow">Personal knowledge archive</div>
       <h1>읽고 생각하고 기록하기</h1>
-      <p class="muted">읽은 것을 저장하는 데서 끝내지 않고, 생각과 질문을 다시 연결하는 개인 작업공간.</p>
       <p class="login-privacy">현재 무료 베타는 초대된 Google 계정만 이용할 수 있습니다. 로그인 정보는 계정 식별과 접근 확인에 사용하며, 글·메모·질문·책갈피 등 개인 기록은 계정별로 분리해 보관합니다.</p>
       <details class="beta-policy">
         <summary>베타 이용·개인정보 안내</summary>
