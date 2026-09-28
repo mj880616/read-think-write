@@ -1,0 +1,32 @@
+name: Deploy RTW Worker test domain
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rtw-worker-test-domain
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: node --check cloudflare/rtw-router.mjs
+      - name: Deploy only read-test.bokdoong.com
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.RTW_CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.RTW_CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config cloudflare/wrangler.toml
+      - name: Verify test domain and live assets
+        run: node cloudflare/verify-deployment.mjs
