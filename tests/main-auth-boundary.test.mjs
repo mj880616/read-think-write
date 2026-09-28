@@ -43,7 +43,7 @@ function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getRe
     return Promise.resolve(value);
   };
   const api = {
-    currentUser: async () => null,
+    currentUser: async () => current,
     signIn: async (email) => { current = { id: email.startsWith('a@') ? A : B, email }; return current; },
     isPersonalOwner: async () => { ownerChecks.push(current?.id); return true; },
     getBetaAccess: async () => betaAllowed(current?.id) ? { email: current?.email, role: 'user', active: true } : null,
@@ -99,8 +99,8 @@ function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getRe
   const location = { pathname: '/app/', search: '' };
   const supabase = { auth: { onAuthStateChange(fn) { listeners.push(fn); } } };
   const source = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8').replace(/^import .*;\r?\n/gm, '');
-  const deferredTimeout = (callback) => { queueMicrotask(callback); return 1; };
-  const context = { api, supabase, APP_BASE: '/app/', document, location, history: { pushState: noop }, window: { addEventListener: noop, scrollY: 0 }, DOMPurify: { sanitize: (s) => s }, marked: { parse: (s) => s }, formatDate: (s) => s, groupResourcesByMonth: () => ({}), matchesQuery: (item, query, fields) => fields.some((field) => String(item[field] ?? '').toLowerCase().includes(query.toLowerCase())), safeHttpUrl: () => null, restoreRedirect: noop, setTimeout: deferredTimeout, clearTimeout: noop, queueMicrotask, URLSearchParams, FormData: class { constructor(form) { this.values = form.values; } get(key) { return this.values[key]; } }, alert: (message) => alerts.push(message), console };
+  const deferredTimeout = (callback, delay = 0) => delay ? globalThis.setTimeout(callback, delay) : (queueMicrotask(callback), 1);
+  const context = { api, supabase, APP_BASE: '/app/', document, location, history: { pushState: noop }, window: { addEventListener: noop, scrollY: 0 }, DOMPurify: { sanitize: (s) => s }, marked: { parse: (s) => s }, formatDate: (s) => s, groupResourcesByMonth: () => ({}), matchesQuery: (item, query, fields) => fields.some((field) => String(item[field] ?? '').toLowerCase().includes(query.toLowerCase())), safeHttpUrl: () => null, restoreRedirect: noop, setTimeout: deferredTimeout, clearTimeout: globalThis.clearTimeout, queueMicrotask, URLSearchParams, FormData: class { constructor(form) { this.values = form.values; } get(key) { return this.values[key]; } }, alert: (message) => alerts.push(message), console };
   vm.runInNewContext(`${source}\nglobalThis.mainTest = { render, resourceDetailView, notesView, topicsView, topicDetailView, questionDetailView, refreshState, bindRelationToggles, get state() { return state; } };`, context);
   const app = context.mainTest;
   return {
