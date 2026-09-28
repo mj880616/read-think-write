@@ -6,13 +6,13 @@ import vm from 'node:vm';
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
 const shellSource = main.slice(main.indexOf('function shell('), main.indexOf('function setAccountMenuOpen('));
-function mediaBlock(query) {
-  const start = styles.indexOf(`${query}{`);
+function mediaBlock(query, from = 0) {
+  const start = styles.indexOf(`${query}{`, from);
   assert.notEqual(start, -1, `missing ${query}`);
   return styles.slice(start, styles.indexOf('\n}', start));
 }
 const desktopCss = mediaBlock('@media(min-width:1024px)');
-const accountGroupCss = mediaBlock('@media(min-width:761px)');
+const accountGroupCss = mediaBlock('@media(min-width:761px)', styles.indexOf('/* PC and tablet header (>=761px)'));
 const tabletCss = mediaBlock('@media(min-width:761px) and (max-width:1023px)');
 
 test('header keeps email, account deletion and logout inside a named account menu', () => {
@@ -49,10 +49,11 @@ test('tablet/fold (761-1023px) header is two tidy rows with a non-wrapping nav',
   assert.doesNotMatch(tabletCss, /\.page|\.hero/, 'tablet change is header-only');
 });
 
-test('tablet and PC keep the entire header sticky even when overflow:clip is unavailable', () => {
+test('tablet and PC use overflow:clip when supported, with a sticky-safe fallback', () => {
   const shared = styles.slice(styles.indexOf('/* sticky header for every screen width'), styles.indexOf('/* PC and tablet header (>=761px)'));
   assert.match(shared, /@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/);
-  assert.match(accountGroupCss, /body\{overflow-x:visible\}/, 'body must never be a non-scrolling overflow container above phone width');
+  assert.match(shared, /@supports not \(overflow:clip\)\{@media\(min-width:761px\)\{body\{overflow-x:visible\}\}\}/, 'unsupported browsers must not leave body as a non-scrolling overflow container');
+  assert.doesNotMatch(accountGroupCss, /body\{overflow-x:visible\}/, 'clip is the supported-browser rule');
   assert.match(accountGroupCss, /:root\{--header-h:94px;--header-top:0px\}/);
   assert.match(desktopCss, /:root\{--header-h:64px\}/);
   assert.doesNotMatch(shared, /@media\(max-width:760px\)\{body\{overflow-x:visible\}/, 'phone menu-row behavior stays unchanged');
