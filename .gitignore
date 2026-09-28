@@ -1,4 +1,5 @@
 # Android local/build output
+node_modules/
 android/.gradle/
 android/**/build/
 android/local.properties
