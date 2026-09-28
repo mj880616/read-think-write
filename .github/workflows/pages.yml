@@ -65,3 +65,25 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+  verify:
+    # Runs after Pages is live. A failure here does NOT roll back the deploy; it only flags
+    # that read.bokdoong.com / read-test.bokdoong.com are not serving this commit correctly.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: deploy
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify custom domains serve this commit (root, assets, /notes/ recovery)
+        env:
+          # Matches the fingerprint written by the deploy job; retries cover CDN cache lag (~10 min).
+          EXPECT_ASSET_VERSION: ${{ github.sha }}
+          VERIFY_ATTEMPTS: '60'
+        run: |
+          export EXPECT_ASSET_VERSION="${EXPECT_ASSET_VERSION:0:12}"
+          node cloudflare/verify-deployment.mjs

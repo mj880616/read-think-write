@@ -13,6 +13,9 @@
 - `.github/workflows/rtw-worker-deploy.yml`은 `workflow_dispatch`로만 실행된다.
   `main`에서 운영 호스트 이름을 확인 입력한 경우에만 실행되며, 배포 후 두 호스트의
   루트, 실제 CSS·JS, 없는 자원 404, 문서 경로 복구를 검사한다.
+- `main` 병합 때 `pages.yml`의 `verify` 작업이 같은 `verify-deployment.mjs`로 두 호스트를
+  다시 검사한다(`EXPECT_ASSET_VERSION`으로 이번 커밋 지문까지 확인, 최대 약 10분 재시도).
+  실패해도 Pages 배포는 되돌려지지 않는다.
 - 자동 배포는 없다. GitHub Pages가 해당 `main`의 정적 파일을 공개한 뒤 수동 실행한다.
   Worker 배포는 Custom Domain 연결을 바꾼다. Supabase 설정은 변경하지 않는다.
 
