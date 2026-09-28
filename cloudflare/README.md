@@ -6,15 +6,15 @@
 
 ## 배포 경계
 
-- Worker 이름: `rtw-router`. `cloudflare/wrangler.toml`의 Custom Domain은
-  **`read-test.bokdoong.com` 하나뿐**이다.
+- Worker 이름: `rtw-router`. `cloudflare/wrangler.toml`에는 시험 호스트와 운영 호스트가
+  모두 설정되어 있다. **이 설정을 배포하면 운영 호스트가 공용 Worker에서 이전된다.**
 - 코드에서는 `read.bokdoong.com`과 시험 호스트를 동일하게 처리한다. 운영 호스트 연결은
-  별도 전환 단계에서만 설정한다. 현재 공용 Worker의 운영 주소를 이 설정에 추가하지 않는다.
+  전환 절차에서만 변경한다.
 - `.github/workflows/rtw-worker-deploy.yml`은 `workflow_dispatch`로만 실행된다.
-  `main`에서만 실행되며, 배포 후 시험 호스트의 루트, 실제 CSS·JS, 없는 자원 404,
-  문서 경로 복구를 검사한다.
+  `main`에서 운영 호스트 이름을 확인 입력한 경우에만 실행되며, 배포 후 두 호스트의
+  루트, 실제 CSS·JS, 없는 자원 404, 문서 경로 복구를 검사한다.
 - 자동 배포는 없다. GitHub Pages가 해당 `main`의 정적 파일을 공개한 뒤 수동 실행한다.
-  Worker 배포는 Supabase 설정이나 DNS/운영 주소 전환을 대신하지 않는다.
+  Worker 배포는 Custom Domain 연결을 바꾼다. Supabase 설정은 변경하지 않는다.
 
 ## 수동 배포 전에 준비할 값
 
@@ -35,7 +35,5 @@ Custom Domain 변경을 계속 워크플로에서 관리하는 동안에는 zone
 접두사 없는 GET 문서 경로만 `/read-think-write/?redirect=...`로 302 이동시킨다.
 문서가 아닌 짧은 경로와 없는 자원은 404이고 짧은 경로에 HTML을 직접 보내지 않는다.
 
-로그인 상태 실기기 검증 전에 Supabase Auth의 로그인 복귀 허용 주소에 시험 주소를
-추가해야 한다. 저장소의 `supabase/functions/rtw-beta-status/index.ts`와
-`supabase/functions/rtw-delete-account/index.ts`에는 시험 주소가 아직 허용 출처로
-등록되지 않았다. 이 단계에서는 Supabase를 변경하지 않는다.
+로그인 상태 실기기 검증 전에 Supabase Auth의 로그인 복귀 허용 주소와 두 Edge Function의
+운영 설정을 별도로 확인한다. Worker 배포는 Supabase를 변경하지 않는다.

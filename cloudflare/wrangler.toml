@@ -1,4 +1,4 @@
-# This deployment owns only the test hostname until the production cutover.
+# Deploying this configuration transfers read.bokdoong.com to rtw-router.
 name = "rtw-router"
 main = "rtw-router.mjs"
 compatibility_date = "2026-09-20"
@@ -6,4 +6,8 @@ workers_dev = false
 
 [[routes]]
 pattern = "read-test.bokdoong.com"
+custom_domain = true
+
+[[routes]]
+pattern = "read.bokdoong.com"
 custom_domain = true

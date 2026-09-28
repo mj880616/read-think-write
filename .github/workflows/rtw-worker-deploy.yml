@@ -1,18 +1,23 @@
-name: Deploy RTW Worker test domain
+name: Deploy RTW Worker custom domains
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_read_cutover:
+        description: 'Type read.bokdoong.com to authorize the production domain transfer'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: rtw-worker-test-domain
+  group: rtw-worker-custom-domains
   cancel-in-progress: false
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && inputs.confirm_read_cutover == 'read.bokdoong.com'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -22,11 +27,11 @@ jobs:
           node-version: '22'
       - run: npm test
       - run: node --check cloudflare/rtw-router.mjs
-      - name: Deploy only read-test.bokdoong.com
+      - name: Deploy read-test.bokdoong.com and transfer read.bokdoong.com
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.RTW_CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.RTW_CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --config cloudflare/wrangler.toml
-      - name: Verify test domain and live assets
+      - name: Verify both domains and live assets
         run: node cloudflare/verify-deployment.mjs
