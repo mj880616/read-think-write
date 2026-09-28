@@ -1,6 +1,6 @@
-const origin = 'https://read-test.bokdoong.com';
+const origins = ['https://read-test.bokdoong.com', 'https://read.bokdoong.com'];
 
-async function check() {
+async function check(origin) {
   const root = await fetch(`${origin}/`, { redirect: 'manual' });
   if (root.status !== 302 || root.headers.get('Location') !== `${origin}/read-think-write/`) {
     throw new Error(`root: expected 302 to /read-think-write/, got ${root.status} ${root.headers.get('Location')}`);
@@ -17,7 +17,7 @@ async function check() {
     const path = html.match(pattern)?.[1];
     if (!path) throw new Error(`app shell has no ${label} reference`);
     const url = new URL(path, page.url);
-    if (url.origin !== origin) throw new Error(`${label} left test origin: ${url}`);
+    if (url.origin !== origin) throw new Error(`${label} left ${origin}: ${url}`);
     const response = await fetch(url);
     if (response.status !== 200 || !contentType.test(response.headers.get('Content-Type') || '')) {
       throw new Error(`${label}: HTTP ${response.status}, ${response.headers.get('Content-Type')} at ${url}`);
@@ -44,18 +44,21 @@ async function check() {
   }
   const recoveredPage = await fetch(recovery);
   if (recoveredPage.status !== 200) throw new Error(`recovered app shell: HTTP ${recoveredPage.status}`);
-  console.log('OK root, app shell, CSS, JavaScript, missing assets, document recovery');
+  console.log(`OK ${origin}: root, app shell, CSS, JavaScript, missing assets, document recovery`);
 }
 
-let lastError;
-for (let attempt = 1; attempt <= 30; attempt++) {
-  try {
-    await check();
-    process.exit(0);
-  } catch (error) {
-    lastError = error;
-    console.error(`WAIT ${attempt}/30: ${error.message}`);
-    if (attempt < 30) await new Promise((resolve) => setTimeout(resolve, 10_000));
+for (const origin of origins) {
+  let lastError;
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    try {
+      await check(origin);
+      lastError = undefined;
+      break;
+    } catch (error) {
+      lastError = error;
+      console.error(`WAIT ${origin} ${attempt}/30: ${error.message}`);
+      if (attempt < 30) await new Promise((resolve) => setTimeout(resolve, 10_000));
+    }
   }
+  if (lastError) throw lastError;
 }
-throw lastError;
