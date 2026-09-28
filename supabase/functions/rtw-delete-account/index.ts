@@ -7,7 +7,8 @@ const admin = createClient(SB, SERVICE, { auth: { persistSession: false } });
 
 const ALLOWED_ORIGINS = new Set([
   'https://read.bokdoong.com',
-  'https://mj880616.github.io'
+  'https://mj880616.github.io',
+  'https://read-test.bokdoong.com'
 ]);
 
 function corsHeaders(origin: string | null) {
