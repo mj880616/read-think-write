@@ -49,6 +49,15 @@ test('tablet/fold (761-1023px) header is two tidy rows with a non-wrapping nav',
   assert.doesNotMatch(tabletCss, /\.page|\.hero/, 'tablet change is header-only');
 });
 
+test('tablet and PC keep the entire header sticky even when overflow:clip is unavailable', () => {
+  const shared = styles.slice(styles.indexOf('/* sticky header for every screen width'), styles.indexOf('/* PC and tablet header (>=761px)'));
+  assert.match(shared, /@supports\(overflow:clip\)\{body\{overflow-x:clip\}\}/);
+  assert.match(accountGroupCss, /body\{overflow-x:visible\}/, 'body must never be a non-scrolling overflow container above phone width');
+  assert.match(accountGroupCss, /:root\{--header-h:94px;--header-top:0px\}/);
+  assert.match(desktopCss, /:root\{--header-h:64px\}/);
+  assert.doesNotMatch(shared, /@media\(max-width:760px\)\{body\{overflow-x:visible\}/, 'phone menu-row behavior stays unchanged');
+});
+
 test('narrow screens flatten the account menu back into the existing userbar', () => {
   const base = styles.slice(0, styles.indexOf('@media(min-width:761px){'));
   assert.match(base, /\.userbar-search,\.account-menu-toggle,\.account-menu-item\{display:none\}/);
