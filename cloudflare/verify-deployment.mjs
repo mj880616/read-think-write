@@ -1,4 +1,7 @@
 const origins = ['https://read-test.bokdoong.com', 'https://read.bokdoong.com'];
+// Optional: the Pages deploy passes its commit fingerprint so a stale app shell keeps retrying.
+const expectedVersion = process.env.EXPECT_ASSET_VERSION || '';
+const attempts = Number(process.env.VERIFY_ATTEMPTS) || 30;
 
 async function check(origin) {
   const root = await fetch(`${origin}/`, { redirect: 'manual' });
@@ -18,6 +21,9 @@ async function check(origin) {
     if (!path) throw new Error(`app shell has no ${label} reference`);
     const url = new URL(path, page.url);
     if (url.origin !== origin) throw new Error(`${label} left ${origin}: ${url}`);
+    if (expectedVersion && !url.pathname.includes(`.${expectedVersion}.`)) {
+      throw new Error(`${label} is not version ${expectedVersion} yet: ${url.pathname}`);
+    }
     const response = await fetch(url);
     if (response.status !== 200 || !contentType.test(response.headers.get('Content-Type') || '')) {
       throw new Error(`${label}: HTTP ${response.status}, ${response.headers.get('Content-Type')} at ${url}`);
@@ -49,15 +55,15 @@ async function check(origin) {
 
 for (const origin of origins) {
   let lastError;
-  for (let attempt = 1; attempt <= 30; attempt++) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       await check(origin);
       lastError = undefined;
       break;
     } catch (error) {
       lastError = error;
-      console.error(`WAIT ${origin} ${attempt}/30: ${error.message}`);
-      if (attempt < 30) await new Promise((resolve) => setTimeout(resolve, 10_000));
+      console.error(`WAIT ${origin} ${attempt}/${attempts}: ${error.message}`);
+      if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 10_000));
     }
   }
   if (lastError) throw lastError;
