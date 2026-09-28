@@ -1,9 +1,10 @@
 import { supabase } from './supabase.js';
-import { APP_BASE } from './config.js';
+import { APP_BASE, ROOT_APP_HOSTS } from './config.js';
 import { isOAuthCallback, rememberLoginUntil, shouldUnlinkEmailIdentity } from './model.js';
 
 const REMEMBER_LOGIN_KEY = 'rtw_remember_until_v1';
 const NATIVE_OAUTH_REDIRECT = 'com.bokdoong.read://auth/callback';
+const WEB_OAUTH_HOSTS = Object.freeze([...ROOT_APP_HOSTS, 'mj880616.github.io']);
 let nativeOAuthBootstrapped = false;
 
 function rememberLogin() {
@@ -147,7 +148,10 @@ export async function signInWithGoogle() {
     return;
   }
 
-  const redirectTo = new URL(APP_BASE, location.origin).href;
+  const redirectOrigin = WEB_OAUTH_HOSTS.includes(location.hostname)
+    ? `https://${location.hostname}`
+    : location.origin;
+  const redirectTo = new URL(APP_BASE, redirectOrigin).href;
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo }
