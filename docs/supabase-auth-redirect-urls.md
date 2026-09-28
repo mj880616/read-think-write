@@ -36,6 +36,13 @@ com.bokdoong.read://auth/callback
 - 허용 범위를 넓히는 와일드카드(`**` 등)로 문제를 덮지 않는다.
 - 비밀값·토큰은 이 문서에 적지 않는다.
 
+## 변경 절차
+
+1. 변경할 복귀 주소를 `read-test.bokdoong.com`에서 먼저 확인한다.
+2. 공용 Supabase 프로젝트를 쓰는 Web2 채팅에 변경 내용을 사전 통보한다.
+3. Supabase 대시보드의 Redirect URLs를 변경한다. 주소는 위 허용 목록과 끝 슬래시까지 글자 그대로 맞춘다.
+4. 폰에서 새 Google 로그인을 시작해 읽생기로 정상 복귀하는지 확인한다.
+
 ## 실수로 지웠을 때
 
 같은 값을 Redirect URLs에 **글자 그대로 다시 추가**하면 복구된다(위 블록에서 복사).
@@ -44,4 +51,6 @@ com.bokdoong.read://auth/callback
 ## 변경 이력
 
 - 2026-09-28: `read.bokdoong.com` 전용 Worker 전환과 함께 옛 주소
-  `https://read.bokdoong.com/read-think-write/` 삭제.
+  `https://read.bokdoong.com/read-think-write/` 삭제. 문제 발생 시 같은 값을 Redirect URLs에
+  다시 추가해 복구한다. 옛 APK와 이미 발급된 로그인 링크의 영향은 아직 확인되지 않았다.
+  당분간 `work`의 `?code=` 우회로가 대비책이다.
