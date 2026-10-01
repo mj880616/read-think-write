@@ -51,6 +51,7 @@ function harness({ holdResourcesFor, holdRelationsFor, holdGetResourceFor, getRe
     AI_DAILY_LIMITS: { read: 3, expand: 3 },
     signOut: async () => { current = null; listeners.forEach((fn) => fn('SIGNED_OUT', null)); },
     listResources: () => read('resources', current ? [rows[current.id]] : []),
+    listRecentResources: () => read('recent', { resources: [], count: 0 }),
     listNotes: (id) => read('notes', id ? [] : current ? [{ ...rows[current.id], body: `${current.id === A ? 'A' : 'B'} note`, resource_id: null }] : []),
     listTopics: () => read('topics', current ? [rows[current.id]] : []),
     listQuestions: () => read('questions', current ? [{ ...rows[current.id], body: `${current.id === A ? 'A' : 'B'} question`, status: 'open' }] : []),

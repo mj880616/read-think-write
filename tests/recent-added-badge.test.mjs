@@ -38,12 +38,13 @@ assert.doesNotMatch(context.renderItem(resource(null, '2026-10-01'), { showRecen
 assert.doesNotMatch(context.renderItem(resource('2026-09-30T15:00:00Z')), /새 글/,
   'other views using the shared item renderer do not gain the badge');
 
-const readListSource = source.slice(source.indexOf('function readListView()'), source.indexOf('function linkCheckbox('));
+const readListSource = source.slice(source.indexOf('function recentQueryWindow('), source.indexOf('function linkCheckbox('));
 const root = { innerHTML: '' };
 const readListContext = {
   ...context,
   root,
-  state: { resources: [resource('2026-09-30T15:00:00Z')], bookmarks: [] },
+  state: { resources: [resource('2026-09-30T15:00:00Z')], recentResources: [], recentCount: 0, bookmarks: [] },
+  location: { search: '' },
   shell: (html) => html,
   bindCommon: () => {},
   bindNoteActions: () => {},

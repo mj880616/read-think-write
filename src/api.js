@@ -206,6 +206,19 @@ export async function listResources() {
   return data ?? [];
 }
 
+export async function listRecentResources(since, until, offset = 0, limit = 10) {
+  const { data, count, error } = await supabase
+    .from('rtw_resources')
+    .select('*', { count: 'exact' })
+    .gte('created_at', since)
+    .lte('created_at', until)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1);
+  fail(error);
+  return { resources: data ?? [], count: count ?? 0 };
+}
+
 export async function getResource(id) {
   const { data, error } = await supabase.from('rtw_resources').select('*').eq('id', id).maybeSingle();
   fail(error);

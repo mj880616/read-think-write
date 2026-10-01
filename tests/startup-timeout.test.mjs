@@ -26,6 +26,7 @@ function harness({ auth, beta, data } = {}) {
     currentUser() { calls.auth++; return auth?.() ?? Promise.resolve(account); },
     getBetaAccess() { calls.beta++; return beta?.() ?? Promise.resolve({ active: true, role: 'user' }); },
     listResources() { calls.data++; return data?.() ?? Promise.resolve([]); },
+    listRecentResources: async () => ({ resources: [], count: 0 }),
     listNotes: async () => [], listTopics: async () => [], listQuestions: async () => [],
     listBookmarks: async () => [], listNoteTypes: async () => [],
     getAiUsageToday: async () => ({ read: 0, expand: 0 }), AI_DAILY_LIMITS: { read: 3, expand: 3 }
