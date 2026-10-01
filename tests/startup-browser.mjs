@@ -17,6 +17,7 @@ export const AI_DAILY_LIMITS = { read: 3, expand: 3 };
 export const currentUser = () => scenario === 'auth-retry' && attempt === 1 ? hold() : Promise.resolve(${JSON.stringify(user)});
 export const getBetaAccess = () => scenario === 'beta-hang' ? hold() : Promise.resolve({ active: true, role: 'user' });
 export const listResources = () => scenario === 'data-hang' ? hold() : Promise.resolve([]);
+export const listRecentResources = async () => ({ resources: [], count: 0 });
 export const listNotes = async () => [];
 export const listTopics = async () => [];
 export const listQuestions = async () => [];

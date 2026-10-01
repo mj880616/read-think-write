@@ -89,6 +89,7 @@ function uiHarness(noteTypes = [], createError = null, updateError = null, optio
       type.name = name;
     },
     listResources: async () => [],
+    listRecentResources: async () => ({ resources: [], count: 0 }),
     listNotes: async () => { noteReads += 1; return deleted ? [] : initialNotes; },
     listTopics: async () => [],
     listQuestions: async () => [],

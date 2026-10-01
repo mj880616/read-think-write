@@ -47,7 +47,7 @@ let betaAccess = null;
 let state = emptyUserState();
 
 function emptyUserState() {
-  return { resources: [], notes: [], questions: [], topics: [], bookmarks: [], relations: [], noteTypes: [] };
+  return { resources: [], recentResources: [], recentCount: 0, recentWindow: null, notes: [], questions: [], topics: [], bookmarks: [], relations: [], noteTypes: [] };
 }
 
 function clearUserState() {
@@ -221,11 +221,14 @@ async function refreshState(startupRunToken) {
   const userId = user?.id;
   const epoch = authEpoch;
   if (!userId || (startupRunToken === undefined && dataReadyUserId !== userId)) return false;
-  const [resources, notes, topics, questions, bookmarks, noteTypes] = await Promise.all([
-    api.listResources(), api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks(), api.listNoteTypes()
+  const recentWindow = recentQueryWindow();
+  const [resources, recent, notes, topics, questions, bookmarks, noteTypes] = await Promise.all([
+    api.listResources(), api.listRecentResources(recentWindow.since, recentWindow.until),
+    api.listNotes(), api.listTopics(), api.listQuestions(), api.listBookmarks(), api.listNoteTypes()
   ]);
   if (!isCurrentRequest(userId, epoch) || (startupRunToken !== undefined && startupRunToken !== startupRun)) return false;
-  state = { resources, notes, topics, questions, bookmarks, relations: [], noteTypes };
+  state = { resources, recentResources: recent.resources.filter(recentlyAdded), recentCount: recent.count,
+    recentWindow, notes, topics, questions, bookmarks, relations: [], noteTypes };
   if (startupRunToken !== undefined) dataReadyUserId = userId;
   return true;
 }
@@ -562,9 +565,29 @@ function homeView() {
 
 }
 
+function recentQueryWindow(now = Date.now()) {
+  const yesterdayInSeoul = seoulCalendarDay(now) - 1;
+  return {
+    since: new Date(yesterdayInSeoul * 86400000 - 9 * 60 * 60 * 1000).toISOString(),
+    until: new Date(now).toISOString()
+  };
+}
+
+function recentSectionHtml() {
+  if (location.search || !state.recentCount) return '';
+  const resources = state.recentResources.filter(recentlyAdded);
+  if (!resources.length) return '';
+  return `<section class="card recent-resources-section" aria-labelledby="recent-resources-title">
+    <h2 id="recent-resources-title">새 글 ${state.recentCount}</h2>
+    ${resources.map((resource) => resourceItem(resource, { showRecentBadge: true })).join('')}
+    ${state.recentResources.length < state.recentCount ? '<button class="btn secondary small recent-resources-more" id="recent-resources-more" type="button">더 보기</button>' : ''}
+  </section>`;
+}
+
 function readListView() {
   root.innerHTML = shell(`
     <section class="hero"><div class="eyebrow">읽기</div><h1>읽은 글</h1><p>자료는 한 번 저장하고 날짜·주제·질문에서 다시 꺼내 본다.</p></section>
+    ${recentSectionHtml()}
     <div class="grid">
       <section class="card"><h2>자료</h2>${state.resources.map((resource) => resourceItem(resource, { showRecentBadge: true })).join('') || empty('아직 자료가 없음')}</section>
       <section class="card">
@@ -585,6 +608,28 @@ function readListView() {
   bindCommon();
   bindNoteActions();
   bindResourceBookmarkButtons();
+
+  document.querySelector('#recent-resources-more')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const stillCurrent = currentViewGuard();
+    button.disabled = true;
+    try {
+      while (state.recentResources.length < state.recentCount) {
+        const offset = state.recentResources.length;
+        const page = await api.listRecentResources(state.recentWindow.since, state.recentWindow.until, offset, 500);
+        if (!stillCurrent()) return;
+        if (!page.resources.length) break;
+        state.recentResources.push(...page.resources);
+        state.recentCount = page.count;
+      }
+      if (stillCurrent()) readListView();
+    } catch (error) {
+      if (!stillCurrent()) return;
+      button.disabled = false;
+      button.textContent = '다시 시도';
+      console.error('새 글 더 보기 실패', error);
+    }
+  });
 
   document.querySelector('#resource-form').addEventListener('submit', async (event) => {
     event.preventDefault();

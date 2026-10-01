@@ -43,7 +43,8 @@ function notesHarness({ notes, createNote } = {}) {
   const api = {
     listRelations: async () => [],
     createNote: async (input) => { writes.push(input); await (createNote?.() ?? null); },
-    listResources: async () => [], listNotes: async () => notes, listTopics: async () => [], listQuestions: async () => [],
+    listResources: async () => [], listRecentResources: async () => ({ resources: [], count: 0 }),
+    listNotes: async () => notes, listTopics: async () => [], listQuestions: async () => [],
     listBookmarks: async () => [], listNoteTypes: async () => []
   };
   const context = {
