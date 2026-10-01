@@ -274,11 +274,29 @@ function empty(text) {
   return `<div class="empty">${esc(text)}</div>`;
 }
 
-function resourceItem(resource) {
+const seoulDayFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Seoul', year: 'numeric', month: 'numeric', day: 'numeric'
+});
+
+function seoulCalendarDay(timestamp) {
+  const parts = seoulDayFormatter.formatToParts(new Date(timestamp));
+  const number = (type) => Number(parts.find((part) => part.type === type).value);
+  return Date.UTC(number('year'), number('month') - 1, number('day')) / 86400000;
+}
+
+function recentlyAdded(resource) {
+  const savedAt = Date.parse(resource.created_at);
+  const now = Date.now();
+  if (!Number.isFinite(savedAt) || savedAt > now) return false;
+  const daysAgo = seoulCalendarDay(now) - seoulCalendarDay(savedAt);
+  return daysAgo === 0 || daysAgo === 1;
+}
+
+function resourceItem(resource, { showRecentBadge = false } = {}) {
   const saved = state.bookmarks.some((b) => b.resource_id === resource.id && b.bookmark_type === 'resource');
   return `<div class="item bookmark-resource-item">
     <div class="bookmark-resource-copy">
-      <a href="${href(`/read/${resource.id}/`)}" data-nav="/read/${resource.id}/">${esc(resource.title)}</a>
+      <a href="${href(`/read/${resource.id}/`)}" data-nav="/read/${resource.id}/">${showRecentBadge && recentlyAdded(resource) ? '<span class="recent-added-badge">새 글</span> ' : ''}${esc(resource.title)}</a>
       <div class="meta">${formatDate(resource.published_on)}${resource.author ? ` · ${esc(resource.author)}` : ''}${resource.source_name ? ` · ${esc(resource.source_name)}` : ''}</div>
     </div>
     <button class="bookmark-star ${saved ? 'saved' : ''}" data-resource-bookmark="${resource.id}" type="button" aria-label="자료 책갈피">${saved ? '★' : '☆'}</button>
@@ -548,7 +566,7 @@ function readListView() {
   root.innerHTML = shell(`
     <section class="hero"><div class="eyebrow">읽기</div><h1>읽은 글</h1><p>자료는 한 번 저장하고 날짜·주제·질문에서 다시 꺼내 본다.</p></section>
     <div class="grid">
-      <section class="card"><h2>자료</h2>${state.resources.map(resourceItem).join('') || empty('아직 자료가 없음')}</section>
+      <section class="card"><h2>자료</h2>${state.resources.map((resource) => resourceItem(resource, { showRecentBadge: true })).join('') || empty('아직 자료가 없음')}</section>
       <section class="card">
         <h2>새 자료</h2>
         <form class="form" id="resource-form">
