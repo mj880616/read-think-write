@@ -15,7 +15,7 @@
       "post": {
         "operationId": "addPersonalItem",
         "summary": "읽생기에 개인 항목 추가",
-        "description": "기존 개인 소유자의 공간에 항목 하나를 추가합니다. 전달된 resource_id는 소유권 확인 후 처리합니다.",
+        "description": "기존 개인 소유자의 공간에 항목 하나를 추가합니다. note의 resource_id는 소유권 확인 후 저장하며 question에는 이 필드를 허용하지 않습니다.",
         "x-openai-isConsequential": true,
         "security": [
           {
@@ -115,8 +115,8 @@
                       "string",
                       "null"
                     ],
-                    "maxLength": 100,
-                    "description": "분류. 생략/null/빈 문자열이면 생각. API 상한은 100자지만 기존 DB 제약은 1~30자여서 31~100자는 저장 실패할 수 있습니다."
+                    "maxLength": 30,
+                    "description": "분류. 최대 30자이며 기존 DB 제약에 맞춰 양끝 공백 없이 사용합니다. 생략/null/빈 문자열이면 생각으로 저장합니다. 고정 허용값 목록은 없습니다."
                   },
                   "resource_id": {
                     "type": [
@@ -126,7 +126,7 @@
                     "minLength": 36,
                     "maxLength": 36,
                     "format": "uuid",
-                    "description": "참조할 글의 UUID. 고정 소유자의 글인지 확인하며 외부 소유·미존재는 같은 오류로 거절합니다. note는 소유 확인 뒤 연결을 저장하고, question은 소유 확인만 하며 연결을 저장하지 않습니다."
+                    "description": "note에서만 사용하는 참조 글 UUID. 고정 소유자의 글인지 확인하며 외부 소유·미존재는 같은 오류로 거절합니다. question 요청에 이 필드가 있으면 null이어도 400으로 거절합니다."
                   },
                   "current_thought": {
                     "type": [
@@ -501,8 +501,8 @@
               "string",
               "null"
             ],
-            "maxLength": 100,
-            "description": "분류. 생략/null/빈 문자열이면 생각. API 상한은 100자지만 기존 DB 제약은 1~30자여서 31~100자는 저장 실패할 수 있습니다."
+            "maxLength": 30,
+            "description": "분류. 최대 30자이며 기존 DB 제약에 맞춰 양끝 공백 없이 사용합니다. 생략/null/빈 문자열이면 생각으로 저장합니다. 고정 허용값 목록은 없습니다."
           },
           "resource_id": {
             "type": [
@@ -551,23 +551,12 @@
             ],
             "maxLength": 60000,
             "description": "질문에 대한 현재 생각."
-          },
-          "resource_id": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "minLength": 36,
-            "maxLength": 36,
-            "format": "uuid",
-            "description": "참조할 글의 UUID. 고정 개인 소유자의 글인지 확인하며 외부 소유·미존재 모두 같은 오류로 거절합니다. 소유 확인만 하며 기존 저장 칼럼을 유지하므로 질문과 글의 연결은 저장하지 않습니다."
           }
         },
         "example": {
           "action": "question",
           "body": "이 변화는 어떤 조건에서 나타날까?",
-          "current_thought": "적용 조건을 구분해서 살펴본다.",
-          "resource_id": null
+          "current_thought": "적용 조건을 구분해서 살펴본다."
         }
       }
     }

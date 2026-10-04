@@ -53,7 +53,7 @@ const REQUEST_SCHEMAS = {
     properties: {
       action: { type: 'string', enum: ['note'] },
       body: { type: 'string', minLength: 1, maxLength: 60000, pattern: '\\S' },
-      note_type: { type: ['string', 'null'], maxLength: 100 },
+      note_type: { type: ['string', 'null'], maxLength: 30 },
       resource_id: { type: ['string', 'null'], minLength: 36, maxLength: 36, format: 'uuid' }
     }
   },
@@ -62,8 +62,7 @@ const REQUEST_SCHEMAS = {
     properties: {
       action: { type: 'string', enum: ['question'] },
       body: { type: 'string', minLength: 1, maxLength: 60000, pattern: '\\S' },
-      current_thought: { type: ['string', 'null'], maxLength: 60000 },
-      resource_id: { type: ['string', 'null'], minLength: 36, maxLength: 36, format: 'uuid' }
+      current_thought: { type: ['string', 'null'], maxLength: 60000 }
     }
   }
 } satisfies Record<string, InputSchema>;
@@ -124,7 +123,7 @@ Deno.serve(async (req: Request) => {
     try { raw = await req.json(); } catch { throw new InputError('invalid_input'); }
     const input = validateInput(raw);
     const owner = await ownerId();
-    if ((input.action === 'note' || input.action === 'question') && input.resource_id) {
+    if (input.action === 'note' && input.resource_id) {
       await checkResourceOwner(input.resource_id, owner);
     }
     if (input.action === 'resource') {
@@ -146,7 +145,6 @@ Deno.serve(async (req: Request) => {
       return json({ ok: true, note: { id: data.id } });
     }
     if (input.action === 'question') {
-      // resource_id is ownership-checked above, but the original question insert has no such column.
       const { data, error } = await admin.from('rtw_questions').insert({
         owner_id: owner, body: input.body!.trim(), current_thought: input.current_thought || '', status: 'open'
       }).select('id').single();

@@ -97,7 +97,7 @@ for (const supplied of [null, '', 'wrong', `${TEST_KEY}x`, 'x'.repeat(4097)]) {
 const cases = {
   resource: { action: 'resource', title: '  Fixture  ', original_title: 'Original', author: 'Author', source_name: 'Source', published_on: '2024-02-29', original_url: 'https://example.com/article', body_md: '# Fixture' },
   note: { action: 'note', body: '  Fixture  ', note_type: '생각', resource_id: RESOURCE },
-  question: { action: 'question', body: '  Fixture  ', current_thought: 'Fixture', resource_id: RESOURCE }
+  question: { action: 'question', body: '  Fixture  ', current_thought: 'Fixture' }
 };
 const expectedColumns = {
   resource: ['author', 'body_md', 'original_title', 'original_url', 'owner_id', 'published_on', 'source_name', 'title', 'visibility'],
@@ -113,9 +113,10 @@ for (const [action, input] of Object.entries(cases)) {
   assert.deepEqual(Object.keys(write.row).sort(), expectedColumns[action]);
   assert.equal(write.row.owner_id, OWNER);
   assert.deepEqual(result.body, { ok: true, [action]: action === 'resource' ? { id: CREATED, title: 'Fixture' } : { id: CREATED } });
-  if (action !== 'resource') assert.ok(test.calls.findIndex(call => call.table === 'rtw_resources') < test.calls.findIndex(call => call.operation === 'insert'));
+  if (action === 'question') assert.equal(test.calls.filter(call => call.table === 'rtw_resources').length, 0);
+  if (action === 'note') assert.ok(test.calls.findIndex(call => call.table === 'rtw_resources') < test.calls.findIndex(call => call.operation === 'insert'));
 }
-for (const action of ['note', 'question']) {
+for (const action of ['note']) {
   const foreign = await denied({ ...cases[action], resource_id: OTHER });
   const missing = await denied({ ...cases[action], resource_id: MISSING });
   const unavailable = await denied(cases[action], { lookupError: true });
@@ -128,13 +129,20 @@ for (const action of ['note', 'question']) {
     assert.equal(test.calls.filter(call => call.table === 'rtw_resources').length, 0);
   }
 }
+// Questions have no stored resource link: reject even a valid owner resource or null.
+for (const resource_id of [RESOURCE, OTHER, MISSING, 'invalid-id', '', null]) {
+  const test = fixture();
+  const result = await test.send({ ...cases.question, resource_id });
+  assert.equal(result.status, 400, 'question resource_id must be rejected, never silently discarded');
+  assert.equal(test.calls.length, 0, 'rejected question fields must not reach the database');
+}
 for (const action of ['update', 'delete', 'get', 'list', '', 'RESOURCE']) await denied({ action });
 for (const input of [null, [], 'bad', {}, { action: 'resource' }, { action: 'resource', title: '   ' }, { action: 'note', body: '' }, { action: 'question', body: ' ' }, { action: 'resource', title: 'Fixture', owner_id: OTHER }]) await denied(input);
 const malformed = fixture();
 assert.equal((await malformed.send('{', { raw: true })).status, 400);
 assert.equal(inserts(malformed).length, 0);
 
-const limits = { title: 500, original_title: 500, author: 300, source_name: 300, original_url: 2048, body_md: 60000, body: 60000, current_thought: 60000, published_on: 10, note_type: 100, resource_id: 36 };
+const limits = { title: 500, original_title: 500, author: 300, source_name: 300, original_url: 2048, body_md: 60000, body: 60000, current_thought: 60000, published_on: 10, note_type: 30, resource_id: 36 };
 for (const [action, fields] of Object.entries({ resource: ['title', 'original_title', 'author', 'source_name', 'original_url', 'body_md'], note: ['body', 'note_type'], question: ['body', 'current_thought'] })) {
   for (const field of fields) {
     const value = field === 'original_url' ? 'https://example.com/' + 'a'.repeat(limits[field] - 20) : 'a'.repeat(limits[field]);
@@ -196,6 +204,9 @@ function contract(schema) {
   if (rule.properties) rule.properties = Object.fromEntries(Object.entries(rule.properties).map(([name, value]) => [name, contract(value)]));
   return rule;
 }
+assert.equal(Object.hasOwn(rules.question.properties, 'resource_id'), false);
+assert.equal(Object.hasOwn(spec.components.schemas.question.properties, 'resource_id'), false);
+assert.equal(Object.hasOwn(spec.components.schemas.note.properties.note_type, 'enum'), false, 'DB permits user-defined labels, not a fixed enum');
 for (const action of ['resource', 'note', 'question']) {
   const schema = spec.components.schemas[action];
   assert.deepEqual(contract(schema), rules[action], `${action}: names, required fields and bounds must match handler`);
