@@ -1,0 +1,564 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "읽생기 개인 추가 API",
+    "version": "1.0.0",
+    "description": "고정 개인 소유자에게 읽기 글·메모·질문을 추가합니다. 수정·삭제·조회 API는 제공하지 않습니다."
+  },
+  "servers": [
+    {
+      "url": "https://xmlkxfjeagycwttklxjw.supabase.co/functions/v1"
+    }
+  ],
+  "paths": {
+    "/rtw-personal-write": {
+      "post": {
+        "operationId": "addPersonalItem",
+        "summary": "읽생기에 개인 항목 추가",
+        "description": "기존 개인 소유자의 공간에 항목 하나를 추가합니다. note의 resource_id는 소유권 확인 후 저장하며 question에는 이 필드를 허용하지 않습니다.",
+        "x-openai-isConsequential": true,
+        "security": [
+          {
+            "PersonalWriteKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action"
+                ],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "resource",
+                      "note",
+                      "question"
+                    ],
+                    "description": "추가할 종류. resource는 읽기 글, note는 메모, question은 질문입니다."
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "pattern": "\\S",
+                    "description": "글 제목. 공백만 있는 제목은 거절합니다."
+                  },
+                  "original_title": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500,
+                    "description": "원문의 제목. 모르면 생략합니다."
+                  },
+                  "author": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 300,
+                    "description": "저자. 모르면 생략합니다."
+                  },
+                  "source_name": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 300,
+                    "description": "발행처. 모르면 생략합니다."
+                  },
+                  "published_on": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 10,
+                    "maxLength": 10,
+                    "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+                    "format": "date",
+                    "description": "원문 발표일. 실제로 유효한 YYYY-MM-DD만 허용하며, 모르면 생략하거나 null로 둡니다. 저장 시각과 다릅니다."
+                  },
+                  "original_url": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 2048,
+                    "pattern": "^[hH][tT][tT][pP][sS]?://",
+                    "format": "uri",
+                    "description": "원문 URL. 유효한 http/https 주소만 허용합니다. 모르면 생략하거나 null로 둡니다."
+                  },
+                  "body_md": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 60000,
+                    "description": "글 본문 Markdown. URL만 전달해도 서버가 내용을 가져오지는 않습니다."
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60000,
+                    "pattern": "\\S",
+                    "description": "추가할 내용. 공백만 있는 내용은 거절합니다."
+                  },
+                  "note_type": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 30,
+                    "description": "분류. 최대 30자이며 기존 DB 제약에 맞춰 양끝 공백 없이 사용합니다. 생략/null/빈 문자열이면 생각으로 저장합니다. 고정 허용값 목록은 없습니다."
+                  },
+                  "resource_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 36,
+                    "maxLength": 36,
+                    "format": "uuid",
+                    "description": "note에서만 사용하는 참조 글 UUID. 고정 소유자의 글인지 확인하며 외부 소유·미존재는 같은 오류로 거절합니다. question 요청에 이 필드가 있으면 null이어도 400으로 거절합니다."
+                  },
+                  "current_thought": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 60000,
+                    "description": "질문에 대한 현재 생각."
+                  }
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/resource"
+                  },
+                  {
+                    "$ref": "#/components/schemas/note"
+                  },
+                  {
+                    "$ref": "#/components/schemas/question"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "생성한 항목의 id와 글 제목만 반환합니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "resource": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "title"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "note": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "question": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "ok",
+                        "resource"
+                      ],
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "const": true
+                        },
+                        "resource": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "title"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "ok",
+                        "note"
+                      ],
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "const": true
+                        },
+                        "note": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "ok",
+                        "question"
+                      ],
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "const": true
+                        },
+                        "question": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "입력·길이·형식·참조 오류. 참조의 존재 여부를 구분하지 않습니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "키 없음 또는 불일치.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "POST만 허용합니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "저장 실패. 내부 정보는 반환하지 않습니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "PersonalWriteKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-rtw-write-key"
+      }
+    },
+    "schemas": {
+      "resource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "title"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "resource"
+            ],
+            "description": "추가할 종류. resource는 읽기 글, note는 메모, question은 질문입니다."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "\\S",
+            "description": "글 제목. 공백만 있는 제목은 거절합니다."
+          },
+          "original_title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500,
+            "description": "원문의 제목. 모르면 생략합니다."
+          },
+          "author": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 300,
+            "description": "저자. 모르면 생략합니다."
+          },
+          "source_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 300,
+            "description": "발행처. 모르면 생략합니다."
+          },
+          "published_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 10,
+            "maxLength": 10,
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "format": "date",
+            "description": "원문 발표일. 실제로 유효한 YYYY-MM-DD만 허용하며, 모르면 생략하거나 null로 둡니다. 저장 시각과 다릅니다."
+          },
+          "original_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 2048,
+            "pattern": "^[hH][tT][tT][pP][sS]?://",
+            "format": "uri",
+            "description": "원문 URL. 유효한 http/https 주소만 허용합니다. 모르면 생략하거나 null로 둡니다."
+          },
+          "body_md": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 60000,
+            "description": "글 본문 Markdown. URL만 전달해도 서버가 내용을 가져오지는 않습니다."
+          }
+        },
+        "example": {
+          "action": "resource",
+          "title": "AI와 노동 변화",
+          "original_title": "AI and work",
+          "author": "연구팀",
+          "source_name": "연구기관",
+          "published_on": "2026-10-01",
+          "original_url": "https://example.com/article",
+          "body_md": "## 요약\n원문에서 확인한 핵심 내용을 정리합니다."
+        }
+      },
+      "note": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "body"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "note"
+            ],
+            "description": "추가할 종류. resource는 읽기 글, note는 메모, question은 질문입니다."
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60000,
+            "pattern": "\\S",
+            "description": "추가할 내용. 공백만 있는 내용은 거절합니다."
+          },
+          "note_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 30,
+            "description": "분류. 최대 30자이며 기존 DB 제약에 맞춰 양끝 공백 없이 사용합니다. 생략/null/빈 문자열이면 생각으로 저장합니다. 고정 허용값 목록은 없습니다."
+          },
+          "resource_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 36,
+            "maxLength": 36,
+            "format": "uuid",
+            "description": "참조할 글의 UUID. 고정 개인 소유자의 글인지 확인하며 외부 소유·미존재 모두 같은 오류로 거절합니다."
+          }
+        },
+        "example": {
+          "action": "note",
+          "body": "핵심 개념을 다시 정리한다.",
+          "note_type": "생각",
+          "resource_id": null
+        }
+      },
+      "question": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "body"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "question"
+            ],
+            "description": "추가할 종류. resource는 읽기 글, note는 메모, question은 질문입니다."
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60000,
+            "pattern": "\\S",
+            "description": "추가할 내용. 공백만 있는 내용은 거절합니다."
+          },
+          "current_thought": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 60000,
+            "description": "질문에 대한 현재 생각."
+          }
+        },
+        "example": {
+          "action": "question",
+          "body": "이 변화는 어떤 조건에서 나타날까?",
+          "current_thought": "적용 조건을 구분해서 살펴본다."
+        }
+      }
+    }
+  }
+}
