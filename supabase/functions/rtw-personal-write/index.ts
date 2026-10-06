@@ -67,7 +67,18 @@ const REQUEST_SCHEMAS = {
   }
 } satisfies Record<string, InputSchema>;
 
-class InputError extends Error {}
+class InputError extends Error {
+  readonly field?: string;
+  readonly reason?: string;
+  constructor(message: string, field?: string, reason?: string) {
+    super(message); this.field = field; this.reason = reason;
+  }
+}
+// Only schema-defined names may be returned; arbitrary caller keys are input data.
+const INPUT_FIELDS = new Set(Object.values(REQUEST_SCHEMAS).flatMap(schema => Object.keys(schema.properties)));
+function inputError(field: string, reason: string, message = 'invalid_input') {
+  return new InputError(message, INPUT_FIELDS.has(field) ? field : '$request', reason);
+}
 function validDate(value: string) {
   const date = new Date(`${value}T00:00:00Z`);
   return Number(value.slice(0, 4)) > 0 && !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
@@ -79,25 +90,27 @@ function validUrl(value: string) {
   } catch { return false; }
 }
 function validateInput(value: unknown): Record<string, string | null> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new InputError('invalid_input');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw inputError('$request', 'type');
   const input = value as Record<string, unknown>;
-  if (typeof input.action !== 'string' || !Object.hasOwn(REQUEST_SCHEMAS, input.action)) throw new InputError('unsupported_action');
+  if (typeof input.action !== 'string' || !Object.hasOwn(REQUEST_SCHEMAS, input.action)) throw inputError('action', 'enum', 'unsupported_action');
   const schema: InputSchema = REQUEST_SCHEMAS[input.action as keyof typeof REQUEST_SCHEMAS];
-  if (Object.keys(input).some(field => !Object.hasOwn(schema.properties, field))) throw new InputError('invalid_input');
-  if (schema.required.some(field => !Object.hasOwn(input, field))) throw new InputError('invalid_input');
+  const unknownField = Object.keys(input).find(field => !Object.hasOwn(schema.properties, field));
+  if (unknownField !== undefined) throw inputError(unknownField, 'unknown_field');
+  const missingField = schema.required.find(field => !Object.hasOwn(input, field));
+  if (missingField !== undefined) throw inputError(missingField, 'required');
   for (const [field, rule] of Object.entries(schema.properties)) {
     const fieldValue = input[field];
     if (fieldValue === undefined) continue;
     if (fieldValue === null && Array.isArray(rule.type)) continue;
-    if (typeof fieldValue !== 'string') throw new InputError('invalid_input');
+    if (typeof fieldValue !== 'string') throw inputError(field, 'type');
     const length = Array.from(fieldValue).length;
-    if (rule.maxLength !== undefined && length > rule.maxLength) throw new InputError(`${field}_too_long`);
-    if (rule.minLength !== undefined && length < rule.minLength) throw new InputError('invalid_input');
-    if (rule.enum && !rule.enum.includes(fieldValue)) throw new InputError('invalid_input');
-    if (rule.pattern && !new RegExp(rule.pattern).test(fieldValue)) throw new InputError('invalid_input');
-    if (rule.format === 'date' && !validDate(fieldValue)) throw new InputError('invalid_input');
-    if (rule.format === 'uri' && !validUrl(fieldValue)) throw new InputError('invalid_input');
-    if (rule.format === 'uuid' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fieldValue)) throw new InputError('invalid_input');
+    if (rule.maxLength !== undefined && length > rule.maxLength) throw inputError(field, 'max_length', `${field}_too_long`);
+    if (rule.minLength !== undefined && length < rule.minLength) throw inputError(field, 'min_length');
+    if (rule.enum && !rule.enum.includes(fieldValue)) throw inputError(field, 'enum');
+    if (rule.pattern && !new RegExp(rule.pattern).test(fieldValue)) throw inputError(field, 'pattern');
+    if (rule.format === 'date' && !validDate(fieldValue)) throw inputError(field, 'format');
+    if (rule.format === 'uri' && !validUrl(fieldValue)) throw inputError(field, 'format');
+    if (rule.format === 'uuid' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fieldValue)) throw inputError(field, 'format');
   }
   return input as Record<string, string | null>;
 }
@@ -109,7 +122,7 @@ async function ownerId() {
 async function checkResourceOwner(resourceId: string, owner: string) {
   // Service role bypasses RLS: both filters are mandatory before any referenced insert.
   const { data, error } = await admin.from('rtw_resources').select('id').eq('id', resourceId).eq('owner_id', owner).single();
-  if (error || !data) throw new InputError('invalid_resource');
+  if (error || !data) throw inputError('resource_id', 'invalid_reference', 'invalid_resource');
 }
 
 Deno.serve(async (req: Request) => {
@@ -120,7 +133,7 @@ Deno.serve(async (req: Request) => {
     const supplied = req.headers.get('x-rtw-write-key') || '';
     if (!await secretMatches(supplied, key)) return json({ error: 'unauthorized' }, 401);
     let raw: unknown;
-    try { raw = await req.json(); } catch { throw new InputError('invalid_input'); }
+    try { raw = await req.json(); } catch { throw inputError('$request', 'invalid_json'); }
     const input = validateInput(raw);
     const owner = await ownerId();
     if (input.action === 'note' && input.resource_id) {
@@ -153,6 +166,6 @@ Deno.serve(async (req: Request) => {
     }
     return json({ error: 'unsupported_action' }, 400);
   } catch (error) {
-    return error instanceof InputError ? json({ error: error.message }, 400) : json({ error: 'write_failed' }, 500);
+    return error instanceof InputError ? json({ error: error.message, field: error.field, reason: error.reason }, 400) : json({ error: 'write_failed' }, 500);
   }
 });
