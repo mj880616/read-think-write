@@ -116,6 +116,37 @@ for (const [action, input] of Object.entries(cases)) {
   if (action === 'question') assert.equal(test.calls.filter(call => call.table === 'rtw_resources').length, 0);
   if (action === 'note') assert.ok(test.calls.findIndex(call => call.table === 'rtw_resources') < test.calls.findIndex(call => call.operation === 'insert'));
 }
+// Reproduce the GPT request offline with thousands of Korean characters and line breaks.
+const gptBody = '코모 감독은 “우리만의 정체성”을 이야기했다.\n\n마음이 이끄는 선택이었다.\n'.repeat(120);
+assert.ok(Array.from(gptBody).length > 3000);
+const gptRequest = {
+  action: 'resource', title: '파브레가스: “코모는 마음이 이끄는 선택이었다. 이후 우리만의 정체성을 만들었다”',
+  author: '알레산드로 라 가투타', published_on: '2026-10-04', body: gptBody
+};
+const gptRejected = fixture();
+const gptFailure = await gptRejected.send(gptRequest);
+assert.equal(gptFailure.status, 400);
+assert.equal(gptRejected.calls.length, 0, 'wrong field must fail before any database access');
+console.log('GPT request reproduction:', JSON.stringify(gptFailure.body));
+assert.deepEqual(gptFailure.body, { error: 'invalid_input', field: 'body', reason: 'unknown_field' });
+const { body: correctedBody, ...gptMetadata } = gptRequest;
+const gptAccepted = fixture();
+assert.equal((await gptAccepted.send({ ...gptMetadata, body_md: correctedBody })).status, 200);
+assert.equal(inserts(gptAccepted).length, 1);
+assert.equal(inserts(gptAccepted)[0].row.body_md, gptBody, 'quotes and newlines must survive unchanged');
+for (const [input, expected] of [
+  [{ action: 'resource' }, { error: 'invalid_input', field: 'title', reason: 'required' }],
+  [{ ...gptMetadata, title: 123 }, { error: 'invalid_input', field: 'title', reason: 'type' }],
+  [{ ...gptMetadata, title: ' ' }, { error: 'invalid_input', field: 'title', reason: 'pattern' }],
+  [{ ...gptMetadata, published_on: '2026-02-30' }, { error: 'invalid_input', field: 'published_on', reason: 'format' }],
+  [{ ...gptMetadata, body_md: '가'.repeat(60001) }, { error: 'body_md_too_long', field: 'body_md', reason: 'max_length' }],
+  [{ ...gptMetadata, ['private-input-key']: 'private-input-value' }, { error: 'invalid_input', field: '$request', reason: 'unknown_field' }],
+  [null, { error: 'invalid_input', field: '$request', reason: 'type' }],
+  [{ action: 'private-action-value' }, { error: 'unsupported_action', field: 'action', reason: 'enum' }]
+]) assert.deepEqual((await denied(input)).body, expected);
+assert.deepEqual((await fixture().send('{', { raw: true })).body, { error: 'invalid_input', field: '$request', reason: 'invalid_json' });
+assert.deepEqual((await fixture().send(gptRequest, { supplied: 'wrong' })).body, { error: 'unauthorized' });
+
 for (const action of ['note']) {
   const foreign = await denied({ ...cases[action], resource_id: OTHER });
   const missing = await denied({ ...cases[action], resource_id: MISSING });
@@ -204,6 +235,16 @@ function contract(schema) {
   if (rule.properties) rule.properties = Object.fromEntries(Object.entries(rule.properties).map(([name, value]) => [name, contract(value)]));
   return rule;
 }
+assert.equal(Object.hasOwn(spec.components.schemas.resource.properties, 'body'), false, 'GPT body request violates the resource schema');
+assert.deepEqual(spec.components.schemas.resource.required, ['action', 'title'], 'resource body_md remains optional');
+assert.equal((await fixture().send(operation.requestBody.content['application/json'].example)).status, 200, 'top-level GPT example must work');
+const diagnosticSchema = operation.responses['400'].content['application/json'].schema;
+for (const body of [gptFailure.body, (await denied({ action: 'resource' })).body, (await denied({ ...gptMetadata, ['private-key']: 'private-value' })).body]) {
+  assert.ok(Object.keys(body).every(field => Object.hasOwn(diagnosticSchema.properties, field)));
+  assert.ok(diagnosticSchema.properties.field.enum.includes(body.field));
+  assert.ok(diagnosticSchema.properties.reason.enum.includes(body.reason));
+}
+assert.deepEqual(Object.keys(operation.responses['401'].content['application/json'].schema.properties), ['error']);
 assert.equal(Object.hasOwn(rules.question.properties, 'resource_id'), false);
 assert.equal(Object.hasOwn(spec.components.schemas.question.properties, 'resource_id'), false);
 assert.equal(Object.hasOwn(spec.components.schemas.note.properties.note_type, 'enum'), false, 'DB permits user-defined labels, not a fixed enum');
