@@ -39,7 +39,7 @@ function harness({ auth, beta, data } = {}) {
   const context = { api, document, supabase: { auth: { onAuthStateChange(fn) { listeners.push(fn); } } },
     APP_BASE: '/app/', APP_BUILD: 'test', location: { pathname: '/app/', search: '', reload() { calls.reload++; } },
     history: { pushState() {}, replaceState() {} }, window: { addEventListener() {}, scrollY: 0 },
-    DOMPurify: { sanitize: (value) => value }, marked: { parse: (value) => value },
+    renderMarkdown: (value) => value,
     formatDate: (value) => value, groupResourcesByMonth: () => ({}), matchesQuery: () => false,
     safeHttpUrl: () => null, restoreRedirect() {}, setTimeout, clearTimeout,
     localStorage: { getItem: () => null }, console: { error() {} }, URLSearchParams };

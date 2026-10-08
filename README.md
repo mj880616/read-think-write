@@ -7,9 +7,12 @@
 정적 사이트이므로 별도 빌드가 필요 없다. 로컬 정적 서버로 열어 확인한다.
 
 ```bash
+npm ci --ignore-scripts
 npm test
 python -m http.server 8000
 ```
+
+Markdown 표의 모바일 레이아웃 검증은 Playwright Chromium을 설치한 뒤 `npm run test:markdown:browser`로 실행한다. 시스템 Chromium을 사용할 때는 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`에 실행 파일 경로를 지정한다.
 
 ## 배포
 

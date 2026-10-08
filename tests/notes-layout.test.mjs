@@ -52,7 +52,7 @@ function notesHarness({ notes, createNote } = {}) {
     APP_BASE: '/app/', restoreRedirect: noop, window: { addEventListener: noop }, history: { pushState: noop },
     FormData: class { constructor(f) { this.f = f; } *[Symbol.iterator]() { yield* Object.entries(this.f.values); } },
     formatDate: noop, groupResourcesByMonth: () => ({}), matchesQuery: noop, safeHttpUrl: noop,
-    DOMPurify: { sanitize: (v) => v }, marked: { parse: (v) => v }, testNotes: notes
+    renderMarkdown: (value) => value, testNotes: notes
   };
   vm.runInNewContext(mainSource + '\nuser = { id: "owner-1", email: "t@example.com" }; dataReadyUserId = user.id; state.notes = globalThis.testNotes; globalThis.ui = { notesView, isSaveShortcut, noteRowText };', context);
   return { root, callbacks, writes, saveButton, ui: context.ui };

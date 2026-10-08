@@ -40,7 +40,7 @@ const server = createServer(async (request, response) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
 const address = server.address();
 const origin = `http://127.0.0.1:${address.port}`;
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined });
 
 async function makePage(scenario) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
@@ -49,12 +49,7 @@ async function makePage(scenario) {
   page.on('pageerror', (error) => errors.push(error.name));
   await page.route('**/src/supabase.js', (route) => route.fulfill({ contentType: 'text/javascript', body: `export const supabase = { auth: { onAuthStateChange() {}, getUser: async () => ({ data: { user: ${JSON.stringify(user)} }, error: null }), getSession: async () => ({ data: { session: null }, error: null }) } };` }));
   await page.route('**/src/api.js', (route) => route.fulfill({ contentType: 'text/javascript', body: fakeApi }));
-  await page.route(/cdn\.jsdelivr\.net/, (route) => route.fulfill({
-    contentType: 'text/javascript',
-    body: route.request().url().includes('dompurify')
-      ? 'export default { sanitize: value => value };'
-      : 'export const marked = { parse: value => value };'
-  }));
+  await page.route('**/src/markdown.js', (route) => route.fulfill({ contentType: 'text/javascript', body: 'export const renderMarkdown = value => value;' }));
   await page.clock.install();
   await page.goto(`${origin}${base}?scenario=${scenario}`, { waitUntil: 'domcontentloaded' });
   return { context, page, errors };

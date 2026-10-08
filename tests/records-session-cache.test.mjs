@@ -106,7 +106,7 @@ function createHarness({ holdARecords = false, holdInitialSession = false, initi
     .replace(/^import .*;\r?\n/gm, '');
   const context = {
     supabase, APP_BASE: '/app/', document, location, MutationObserver,
-    DOMPurify: { sanitize: (html) => html }, marked: { parse: (text) => text },
+    renderMarkdown: (value) => value,
     window: { addEventListener() {} }, queueMicrotask(callback) { microtasks.push(callback); },
     setTimeout, console
   };
