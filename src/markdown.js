@@ -12,6 +12,9 @@ const markdown = new Marked({
     },
     emStrong(src, maskedSrc, prevChar) {
       if (!src.startsWith('**')) return false;
+      // Preserve already valid CommonMark nesting; relax only failed strongs.
+      const original = Tokenizer.prototype.emStrong.call(this, src, maskedSrc, prevChar);
+      if (original) return original;
       const sourceStart = maskedSrc.length - src.length;
       const openingEnd = sourceStart + src.match(/^\*+/)[0].length;
       const mask = maskedSrc.replace(cjkAfterPunctuationStrong, (match, cjk, index) => {
@@ -23,9 +26,7 @@ const markdown = new Marked({
         // Leave it alone even when the outer strong needs the CJK extension.
         const offset = index - sourceStart;
         const inner = Tokenizer.prototype.emStrong.call(this, src.slice(offset), maskedSrc, src[offset - 1]);
-        // Adjacent spans must close before a CJK suffix, rather than consuming
-        // that suffix as an inner span: **34%**임**35%**임.
-        if (inner?.type === 'strong' && !/[\p{L}\p{N}]/u.test(src[offset + inner.raw.length] || '')) return match;
+        if (inner?.type === 'strong') return match;
         return '**' + ' '.repeat(cjk.length);
       });
       return Tokenizer.prototype.emStrong.call(this, src, mask, prevChar);

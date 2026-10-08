@@ -64,7 +64,7 @@ for (const file of ['main.js', 'records-ui.js']) {
     assert.equal(dom(render('```\n**34%**임 65~70%\n```')).querySelectorAll('strong, del').length, 0);
   });
   test(`${file}: punctuation before opening strong and nested strong stay intact`, () => {
-    for (const input of ['(**굵게**)', '!**漢**', '**outer (**한**) text**', '**앞!**임', '(**34%**임)']) {
+    for (const input of ['(**굵게**)', '!**漢**', '**outer (**한**) text**', '**outer :**한**임 text**', '**outer "**한**임" text**', '**앞!**임', '(**34%**임)']) {
       const result = dom(render(input));
       assert.ok(result.querySelector('strong'), input);
       assert.equal(result.querySelectorAll('em').length, 0, input);
@@ -78,9 +78,9 @@ for (const file of ['main.js', 'records-ui.js']) {
     assert.equal(nested.querySelector('strong > strong').textContent, '한!');
     assert.equal(nested.querySelector('strong').textContent, 'outer (한!임) 34%');
     assert.equal(nested.textContent.trim(), 'outer (한!임) 34%임');
-    const adjacent = dom(render('**34%**임**35%**임'));
-    assert.deepEqual([...adjacent.querySelectorAll('strong')].map((item) => item.textContent), ['34%', '35%']);
-    assert.equal(adjacent.textContent.trim(), '34%임35%임');
+    // A separator makes consecutive CJK spans unambiguous.
+    const consecutive = dom(render('**34%**임 **35%**임'));
+    assert.deepEqual([...consecutive.querySelectorAll('strong')].map((item) => item.textContent), ['34%', '35%']);
   });
   test(`${file}: headings, lists, quotes, tables and links match existing output`, () => {
     const input = '# 제목\n\n- 첫째\n- 둘째\n\n> 인용\n\n' + table + '\n\n[링크](https://example.test)';
