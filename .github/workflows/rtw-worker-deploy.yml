@@ -25,6 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm ci --ignore-scripts
       - run: npm test
       - run: node --check cloudflare/rtw-router.mjs
       - name: Deploy read-test.bokdoong.com and transfer read.bokdoong.com

@@ -19,6 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm ci --ignore-scripts
       - run: npm test
       - name: Check JavaScript syntax
         run: for file in src/*.js; do node --check "$file"; done

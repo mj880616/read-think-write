@@ -1,5 +1,4 @@
-import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.2.6/+esm';
-import { marked } from 'https://cdn.jsdelivr.net/npm/marked@16.2.1/lib/marked.esm.js';
+import { renderMarkdown } from './markdown.js';
 import { supabase } from './supabase.js';
 import * as api from './api.js';
 import { APP_BASE } from './config.js';
@@ -107,10 +106,6 @@ function esc(value = '') {
   return String(value).replace(/[&<>'"]/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   }[char]));
-}
-
-function renderMarkdown(value = '') {
-  return DOMPurify.sanitize(marked.parse(value));
 }
 
 function pathFromLocation() {

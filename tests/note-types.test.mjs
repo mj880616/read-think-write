@@ -126,7 +126,7 @@ function uiHarness(noteTypes = [], createError = null, updateError = null, optio
     },
     history: { pushState: noop }, confirm: (message) => { confirms.push(message); return true; }, alert: (message) => alerts.push(message),
     formatDate: noop, groupResourcesByMonth: () => ({}), matchesQuery: noop, safeHttpUrl: noop,
-    DOMPurify: { sanitize: (value) => value }, marked: { parse: (value) => value }
+    renderMarkdown: (value) => value
   };
   context.testTypes = noteTypes;
   context.testNotes = initialNotes;
