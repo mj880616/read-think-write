@@ -1,3 +1,5 @@
+import { bindNativePullRefresh } from './mobile-pull-refresh.js';
+
 function capacitor() {
   return globalThis.Capacitor ?? null;
 }
@@ -39,6 +41,8 @@ function shouldOpenExternally(anchor) {
 
 export async function bootstrapNativeNavigation() {
   if (!isNativeAndroid()) return;
+
+  bindNativePullRefresh(document.querySelector('#app'));
 
   const app = plugin('App');
   const browser = plugin('Browser');
