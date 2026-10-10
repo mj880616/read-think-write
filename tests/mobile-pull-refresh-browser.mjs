@@ -23,6 +23,7 @@ export const listTopics = async () => [];
 export const listQuestions = async () => [];
 export const listBookmarks = async () => [];
 export const listNoteTypes = async () => [];
+export const createNote = async () => { globalThis.__testNoteSaves = (globalThis.__testNoteSaves || 0) + 1; };
 export const getAiUsageToday = async () => ({ read: 0, expand: 0 });
 `;
 const fakeSupabase = `export const supabase = { auth: {
@@ -64,7 +65,13 @@ const server = createServer(async (request, response) => {
     const type = target.endsWith('.js') ? 'text/javascript' : target.endsWith('.css') ? 'text/css' : 'text/html';
     // Same downstream cache policy as cloudflare/rtw-router.mjs.
     response.writeHead(200, { 'Content-Type': `${type}; charset=utf-8`, 'Cache-Control': 'no-cache, must-revalidate' }).end(body);
-  } catch { response.writeHead(404).end(); }
+  } catch {
+    // Model the deployed document recovery at this server's local APP_BASE.
+    if (request.headers['sec-fetch-dest'] === 'document' && pathname.endsWith('/')) {
+      const path = '/' + relative + new URL(request.url, origin).search;
+      response.writeHead(302, { Location: `${base}?redirect=${encodeURIComponent(path)}` }).end();
+    } else response.writeHead(404).end();
+  }
 });
 await new Promise(done => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
@@ -79,7 +86,9 @@ async function open(native = true, width = 390) {
   }, { native });
   const page = await context.newPage();
   const errors = [];
+  const dialogs = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('dialog', async dialog => { dialogs.push(dialog.type()); await dialog.dismiss(); });
   await page.goto(origin + base, { waitUntil: 'networkidle' });
   await page.getByText('나의 생각 저장소').waitFor();
   if (native) await page.waitForSelector('.native-pull-refresh', { state: 'attached' });
@@ -91,7 +100,7 @@ async function open(native = true, width = 390) {
     if (release) await send('touchEnd');
   };
   const pull = (release = true) => move([[195, 310], [195, 330], [195, 355], [195, 385], [195, 430]], release);
-  return { context, page, errors, cdp, move, pull };
+  return { context, page, errors, dialogs, cdp, move, pull };
 }
 
 async function noReload(h, action, label) {
@@ -160,6 +169,55 @@ try {
   });
   await noReload(writing, () => writing.pull(), 'editor focus blocks refresh outside the editor');
   await writing.context.close();
+
+  const draft = await open();
+  await draft.page.locator('[data-nav="/notes/"]').click();
+  const memo = draft.page.locator('#independent-note-form textarea');
+  await memo.fill('저장하지 않은 메모');
+  await memo.evaluate(element => element.blur());
+  await draft.page.evaluate(() => scrollTo(0, 0));
+  const hero = await draft.page.locator('.hero').boundingBox();
+  const memoPull = () => draft.move([[195, hero.y + 10], [195, hero.y + 30], [195, hero.y + 60], [195, hero.y + 90], [195, hero.y + 130]]);
+  await noReload(draft, memoPull, 'blurred unsaved memo must not reload');
+  assert.equal(await memo.inputValue(), '저장하지 않은 메모');
+  assert.equal(await draft.page.locator('.native-pull-refresh').textContent(), '저장하지 않은 내용이 있어 새로고침하지 않습니다');
+  const notice = await draft.page.locator('.native-pull-refresh').boundingBox();
+  assert.ok(notice.x >= 0 && notice.x + notice.width <= 390, 'blocked notice fits phone width');
+  await draft.page.waitForFunction(() => document.querySelector('.native-pull-refresh').hidden);
+  await draft.page.locator('#independent-note-form button[type="submit"]').click();
+  await draft.page.waitForFunction(() => window.__testNoteSaves === 1 && document.querySelector('#independent-note-form textarea').value === '');
+  await memoPull();
+  await draft.page.waitForFunction(() => window.__testBoots === 2);
+  await draft.page.waitForLoadState('networkidle');
+  assert.equal(await memo.inputValue(), '');
+  assert.deepEqual(draft.errors, []);
+  assert.deepEqual(draft.dialogs, [], 'no confirmation dialog for blocked refresh');
+  await draft.context.close();
+  console.log('PASS: unsaved memo after blur is retained; notice expires without dialogs; save redraw restores refresh');
+
+  const numeric = await open();
+  await numeric.page.evaluate(() => {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.id = 'test-partial-number';
+    document.querySelector('.page').append(input);
+  });
+  const numberInput = numeric.page.locator('#test-partial-number');
+  await numberInput.pressSequentially('-');
+  await numberInput.evaluate(element => element.blur());
+  assert.equal(await numberInput.inputValue(), '', 'partial numeric text is not exposed in value');
+  assert.equal(await numberInput.evaluate(element => element.validity.badInput), true);
+  await numeric.page.evaluate(() => scrollTo(0, 0));
+  await noReload(numeric, () => numeric.pull(), 'visible partial numeric text must not be lost');
+  assert.equal(await numeric.page.locator('.native-pull-refresh').textContent(), '저장하지 않은 내용이 있어 새로고침하지 않습니다');
+  await numberInput.fill('');
+  await numberInput.evaluate(element => element.blur());
+  await numeric.page.evaluate(() => scrollTo(0, 0));
+  await numeric.pull();
+  await numeric.page.waitForFunction(() => window.__testBoots === 2);
+  assert.deepEqual(numeric.dialogs, []);
+  await numeric.context.close();
+  console.log('PASS: partial numeric keyboard input blocks refresh until cleared');
 
   const swipe = await open();
   await noReload(swipe, () => swipe.move([[195, 310], [175, 310], [145, 310], [95, 310]]), 'horizontal tab swipe must not reload');

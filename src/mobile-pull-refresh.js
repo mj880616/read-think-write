@@ -7,8 +7,38 @@ export function bindNativePullRefresh(root) {
   const verticalRatio = 2;
   const controls = 'button, input, label, select, textarea, [contenteditable]:not([contenteditable="false"]), [data-swipe-ignore]';
   const editors = 'input, select, textarea, [contenteditable]:not([contenteditable="false"])';
+  const editableSelector = '[contenteditable=""], [contenteditable="true" i], [contenteditable="plaintext-only" i]';
+  const textInputTypes = new Set(['text', 'search', 'email', 'url', 'tel', 'password', 'number']);
+  const initialEditables = new WeakMap();
+  const unsavedMessage = '저장하지 않은 내용이 있어 새로고침하지 않습니다';
   let gesture = null;
   let reloading = false;
+  let blockedTimer;
+
+  const rememberEditables = (container) => {
+    const elements = [...container.querySelectorAll(editableSelector)];
+    if (container.matches?.(editableSelector)) elements.push(container);
+    for (const element of elements) {
+      if (!initialEditables.has(element)) initialEditables.set(element, element.innerHTML);
+    }
+  };
+  rememberEditables(document.body);
+  // Keep each editable's first rendered content, including future route renders.
+  // Observe added elements only; typing must never replace the original baseline.
+  const inputObserver = new MutationObserver((records) => {
+    for (const record of records) {
+      if (record.type === 'attributes') rememberEditables(record.target);
+      for (const node of record.addedNodes) if (node.nodeType === 1) rememberEditables(node);
+    }
+  });
+  inputObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['contenteditable'] });
+  const hasUnsavedInput = () => [...document.querySelectorAll(`input, textarea, ${editableSelector}`)].some(element => {
+    if (element.matches(editableSelector)) return initialEditables.get(element) !== element.innerHTML;
+    if (element.tagName === 'INPUT' && !textInputTypes.has(element.type)) return false;
+    // Partial numeric text (e.g. '-') is visible but value can still be empty.
+    // defaultValue retains rendered text even after typing or automatic imports.
+    return element.validity.badInput || element.value !== element.defaultValue;
+  });
 
   // Keep the status outside #app: route renders replace its contents.
   const indicator = document.createElement('div');
@@ -23,6 +53,7 @@ export function bindNativePullRefresh(root) {
     if (gesture && !gesture.target.isConnected) reset();
   });
   const reset = () => {
+    window.clearTimeout(blockedTimer);
     detachObserver.disconnect();
     gesture = null;
     if (!reloading) indicator.hidden = true;
@@ -62,14 +93,21 @@ export function bindNativePullRefresh(root) {
     gesture.pulling = true;
     gesture.ready = dy >= threshold;
     event.preventDefault();
-    indicator.textContent = gesture.ready ? '놓으면 새로고침' : '아래로 당겨 새로고침';
+    indicator.textContent = hasUnsavedInput() ? unsavedMessage : gesture.ready ? '놓으면 새로고침' : '아래로 당겨 새로고침';
     indicator.hidden = false;
   }, { passive: false });
 
   root.addEventListener('touchend', (event) => {
     if (!gesture) return;
-    const refresh = event.touches.length === 0 && gesture.ready && valid();
+    const blocked = gesture.pulling && valid() && hasUnsavedInput();
+    const refresh = event.touches.length === 0 && gesture.ready && valid() && !blocked;
     reset();
+    if (blocked) {
+      indicator.textContent = unsavedMessage;
+      indicator.hidden = false;
+      blockedTimer = window.setTimeout(() => { indicator.hidden = true; }, 2000);
+      return;
+    }
     if (!refresh || reloading) return;
     reloading = true;
     indicator.textContent = '새로고침 중…';
