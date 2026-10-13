@@ -1,5 +1,5 @@
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.2.6/+esm';
-import { Marked, Tokenizer } from 'https://cdn.jsdelivr.net/npm/marked@16.2.1/lib/marked.esm.js';
+import { Marked, Tokenizer, Renderer } from 'https://cdn.jsdelivr.net/npm/marked@16.2.1/lib/marked.esm.js';
 
 // Keep marked's delimiter balancing and masking of code, links and escapes.
 // Only its delimiter-search mask changes; the source and token text do not.
@@ -34,10 +34,22 @@ const markdown = new Marked({
   }
 });
 
-export function renderMarkdown(value = '') {
+export function renderMarkdown(value = '', { mermaid = false } = {}) {
+  const marker = mermaid ? globalThis.crypto.randomUUID() : '';
+  const renderer = new Renderer();
+  if (mermaid) renderer.code = function(token) {
+    const html = Renderer.prototype.code.call(this, token);
+    return /^ {0,3}`{3,}[ \t]*mermaid(?:\s|$)/.test(token.raw)
+      ? html.replace('<pre>', `<pre data-mermaid-code="${marker}">`) : html;
+  };
   // Sanitize first, then wrap tables using DOM operations, including raw HTML tables.
   const template = document.createElement('template');
-  template.innerHTML = DOMPurify.sanitize(markdown.parse(value || ''));
+  template.innerHTML = DOMPurify.sanitize(markdown.parse(value || '', mermaid ? { renderer } : undefined));
+  // Raw HTML cannot opt itself into diagram rendering. Only marked's fenced tokens can.
+  for (const pre of template.content.querySelectorAll('pre[data-mermaid-code]')) {
+    if (mermaid && pre.dataset.mermaidCode === marker) pre.dataset.mermaidCode = '';
+    else pre.removeAttribute('data-mermaid-code');
+  }
   for (const table of template.content.querySelectorAll('table')) {
     if (table.parentElement?.classList.contains('markdown-table-scroll')) continue;
     const wrapper = document.createElement('div');

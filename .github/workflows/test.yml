@@ -19,3 +19,8 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts
       - run: npm test
+
+      - name: Install Chromium for body rendering regression checks
+        run: npx playwright install --with-deps chromium
+      - name: Check Markdown and Mermaid in Chromium
+        run: npm run test:markdown:browser && npm run test:mermaid:browser
