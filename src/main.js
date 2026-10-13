@@ -1,4 +1,5 @@
 import { renderMarkdown } from './markdown.js';
+import { renderMermaidBlocks } from './mermaid.js';
 import { supabase } from './supabase.js';
 import * as api from './api.js';
 import { APP_BASE } from './config.js';
@@ -742,7 +743,7 @@ async function resourceDetailView(id) {
         <div class="status" id="resource-edit-status"></div>
       </form>
     </section>
-    <article class="article" id="resource-article">${renderMarkdown(resource.body_md || '') || '<p class="muted">본문이 아직 없음.</p>'}</article><div id="selection-bookmark-pop" class="selection-bookmark-pop" hidden><div class="inline-actions"><button class="btn small" id="save-selection-bookmark" type="button">책갈피</button><button class="btn secondary small" id="save-selection-note" type="button">메모 저장</button></div></div>
+    <article class="article" id="resource-article">${renderMarkdown(resource.body_md || '', { mermaid: true }) || '<p class="muted">본문이 아직 없음.</p>'}</article><div id="selection-bookmark-pop" class="selection-bookmark-pop" hidden><div class="inline-actions"><button class="btn small" id="save-selection-bookmark" type="button">책갈피</button><button class="btn secondary small" id="save-selection-note" type="button">메모 저장</button></div></div>
     <section class="article-note card">
       <h2>나의 메모</h2>
       <form id="resource-note-form" class="form">
@@ -780,7 +781,9 @@ async function resourceDetailView(id) {
   document.querySelectorAll('[data-local-passage-bookmark]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();const url=new URL(a.href,location.href);history.pushState({},'',url.pathname+url.search);resourceDetailView(id);}));
 
   document.querySelector('#resource-bookmark-toggle')?.addEventListener('click',async()=>{const stillCurrent=currentViewGuard();const old=bookmarks.find(b=>b.bookmark_type==='resource');if(old)await api.deleteBookmark(old.id);else await api.createBookmark({resource_id:id,bookmark_type:'resource'},user.id);if(!stillCurrent()||!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
-  const article=document.querySelector('#resource-article'); const pop=document.querySelector('#selection-bookmark-pop'); let pending=null; let selectionTimer=null;
+  const article=document.querySelector('#resource-article');
+  const diagramsReady = renderMermaidBlocks(article);
+  const pop=document.querySelector('#selection-bookmark-pop'); let pending=null; let selectionTimer=null;
   const captureArticleSelection=()=>{const s=window.getSelection();const t=s?.toString().trim()||'';if(!t||t.length>2000||!s?.rangeCount||!article)return false;const range=s.getRangeAt(0);const common=range.commonAncestorContainer;const node=common.nodeType===Node.TEXT_NODE?common.parentNode:common;if(!article.contains(node))return false;const before=document.createRange();before.selectNodeContents(article);before.setEnd(range.startContainer,range.startOffset);const through=document.createRange();through.selectNodeContents(article);through.setEnd(range.endContainer,range.endOffset);pending=bookmarkSelectionData(article.textContent||'',t,before.toString(),through.toString(),s.toString());if(!pending)return false;pop.hidden=false;return true;};
   const scheduleSelectionCapture=(delay=250)=>{clearTimeout(selectionTimer);selectionTimer=setTimeout(()=>captureArticleSelection(),delay);};
   article?.addEventListener('mouseup',()=>scheduleSelectionCapture(30));
@@ -790,6 +793,17 @@ async function resourceDetailView(id) {
   document.querySelector('#save-selection-bookmark')?.addEventListener('click',async()=>{if(!pending)return;const stillCurrent=currentViewGuard();const note=prompt('메모를 남길까요? (선택 사항)')||'';await api.createBookmark({resource_id:id,bookmark_type:'passage',selected_text:pending.text,start_offset:pending.start,end_offset:pending.end,context_before:pending.contextBefore,context_after:pending.contextAfter,note},user.id);if(!stillCurrent())return;pop.hidden=true;window.getSelection()?.removeAllRanges();if(!await refreshState()||!stillCurrent())return;resourceDetailView(id);});
   const bookmarkId=new URLSearchParams(location.search).get('bookmark');
   if(bookmarkId){
+    const scrollBookmarkTo = (element) => {
+      if (!element) return;
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Diagram height becomes final after SVG decoding; keep the requested
+      // passage in view even when a tall diagram finishes asynchronously.
+      void diagramsReady.then(() => {
+        if (article.isConnected && article.contains(element)) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    };
     const target=bookmarks.find(b=>String(b.id)===bookmarkId&&b.bookmark_type==='passage');
     const nodes=[];
     if(article){const walker=document.createTreeWalker(article,NodeFilter.SHOW_TEXT);while(walker.nextNode())nodes.push(walker.currentNode);}
@@ -803,8 +817,8 @@ async function resourceDetailView(id) {
         range.setEnd(found.endNode,found.endOffset);
         const mark=document.createElement('mark');
         mark.className='bookmark-target';
-        try{range.surroundContents(mark);mark.scrollIntoView({behavior:'smooth',block:'center'});}
-        catch{found.startNode.parentElement?.scrollIntoView({behavior:'smooth',block:'center'});}
+        try{range.surroundContents(mark);scrollBookmarkTo(mark);}
+        catch{scrollBookmarkTo(found.startNode.parentElement);}
       }catch(error){
         console.error('Bookmark location failed',error);
         alert('본문이 수정되어 책갈피 위치를 찾지 못했습니다.');
@@ -1221,7 +1235,7 @@ async function archiveView(year = '2026') {
         return `<details class="archive-article">
           <summary>${esc(resource.title)}</summary>
           <div class="meta">${esc(resource.author || '')}${resource.source_name ? ` · ${esc(resource.source_name)}` : ''}</div>
-          <article class="archive-body">${renderMarkdown(resource.body_md || '') || '<p class="muted">본문이 아직 없음.</p>'}</article>
+          <article class="archive-body">${renderMarkdown(resource.body_md || '', { mermaid: true }) || '<p class="muted">본문이 아직 없음.</p>'}</article>
           <section class="archive-note-box">
             <h3>나의 메모</h3>
             <form class="form archive-note-form" data-resource-id="${resource.id}">
@@ -1245,6 +1259,13 @@ async function archiveView(year = '2026') {
   `, 'archive');
   bindCommon();
   bindNoteActions();
+
+  document.querySelectorAll('.archive-article').forEach((details) => {
+    // Wait until the body is visible so Mermaid can measure its labels.
+    details.addEventListener('toggle', () => {
+      if (details.open) void renderMermaidBlocks(details.querySelector('.archive-body'));
+    });
+  });
 
   document.querySelectorAll('.archive-note-form').forEach((form) => {
     form.addEventListener('submit', async (event) => {
